@@ -1,85 +1,82 @@
 package uk.ac.ed.inf.aqmaps;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+
+import java.lang.Math;
 
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
+
 public class DronePilot {
 
 	// This should take in the start point, sensor points and try to devise a good path
 	
-	private List<Polygon> buildings = new ArrayList<>();
+	private Drone drone;
+	private NoFlyZoneChecker noFlyZoneChecker;
+	private HashMap<Point, Sensor> sensors;	
 	
-	// will need to write a fair bit on this
+	private List<Point> flightPlan;
 	
-	
-	public DronePilot(FeatureCollection noFlyZones) {
-		for (Feature feature : noFlyZones.features()) {
-			buildings.add((Polygon) feature.geometry());
-		}
+	public DronePilot(Drone drone, HashMap<Point, Sensor> sensors, NoFlyZoneChecker noFlyZoneChecker) {
+		this.noFlyZoneChecker = noFlyZoneChecker;
+		this.sensors = sensors;
+		this.drone = drone;
 	}
 	
-	
-	
-	// https://martin-thoma.com/how-to-check-if-two-line-segments-intersect/
-	// The cross product is useful here because it's sign changes depending on stuff
-	// Doesn't work in 2D so just use first two axes
-	// Points represent vectors instead
-	
-	public boolean isMoveLegal(Point origin, Point destination) {
+	// Should return a greedy flight path between all the sensors, I guess ordered by their coords? 
+	public List<Point> greedyPlan() {
+
+		// Would be much quicker to use hashmaps I think?
+		var startingPos = drone.getPosition();
+
+		var dronePath = new ArrayList<Point>();
+		dronePath.add(startingPos);
 		
-		boolean intersecting = false;
+		var curr = startingPos;
+		double minDistance;
+		Point minSensor;
 		
-		for (Polygon building : buildings) {
-			// Get the coordinates that make up each no-fly-zone building
-			List<Point> polyCoords = building.coordinates().get(0);
-			for (int i = 0; i < polyCoords.size()-2; i++) {
-				
-				Point p1 = polyCoords.get(i);
-				Point p2 = polyCoords.get(i+1);
-				
-				Point polyVec = normalise(p1, p2);
-				Point droneVec = normalise(origin, destination);
-				Point originPolyVec = normalise(origin, p1);
-				Point destinationPolyVec = normalise(origin, p2);
-				Point originDroneVec = normalise(p1, origin);
-				Point destinationDroneVec = normalise(p1, destination);
-				
-				intersecting = doesLineSegmentCrossLine(polyVec, originDroneVec, destinationDroneVec)
-						|| doesLineSegmentCrossLine(droneVec, originPolyVec, destinationPolyVec);
-				if (intersecting) {
-					break;
-				}	
+		// For every single sensor
+		for (int i = 0; i < 33; i++) {
+		
+			minDistance = Double.MAX_VALUE;
+			minSensor = Point.fromLngLat(0, 0);
+			
+			for (Point sensor : sensors.keySet()) {
+				var dist = distance(curr, sensor);
+				if (dist < minDistance) {
+					if (!dronePath.contains(sensor) && noFlyZoneChecker.isMoveLegal(curr, sensor)) {
+						minDistance = dist;
+						minSensor = sensor;
+					}
+				}
 			}
+			curr = minSensor;
+			dronePath.add(curr);  // Path acts as the visited thing
+			
 		}
-		return intersecting;
+		
+		dronePath.add(startingPos);
+		
+		double totalDist = 0;
+		for (int i = 0; i < 34; i++) {
+			totalDist += distance(dronePath.get(i), dronePath.get(i+1));
+		}
+		
+		System.out.println(totalDist/0.0003);
+		
+		return dronePath;
+		
 	}
 	
-	
-	
-	
-	// Basically you're using the cross product to see which side of the line each point is
-	
-	public boolean doesLineSegmentCrossLine(Point lineVec, Point segmentA, Point segmentB) {
-		return (cross(lineVec, segmentA) >= 0) ^ (cross(lineVec, segmentB) >= 0);
-	}
-	
-	// The name "normalise" is potentially confusing.
-	// This takes two points that define a line segment. 
-	// It then moves both points so that point a lies at (0, 0).
-	public Point normalise(Point a, Point b) {
-		return Point.fromLngLat(
-				b.longitude() - a.longitude(),
-				b.latitude() - a.latitude()
-				);
-	}
-	
-	public double cross(Point a, Point b) {
-		return a.longitude()*b.latitude() - a.latitude()*b.longitude();
+	private static double distance(Point a, Point b) {
+		return Math.sqrt( Math.pow(a.longitude()-b.longitude(), 2) + Math.pow(a.latitude()-b.latitude(), 2));
 	}
 	
 }

@@ -5,7 +5,7 @@ public class Sensor {
 	// watch out with float
 	
 	private String location;
-	private float battery;
+	private double battery;
 	private String reading;
 	
 	public String getLocation() {
@@ -15,7 +15,7 @@ public class Sensor {
 		this.location = location;
 	}
 	
-	public float getBattery() {
+	public double getBattery() {
 		return battery;
 	}
 	public void setBattery(float battery) {

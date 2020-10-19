@@ -1,11 +1,17 @@
 package uk.ac.ed.inf.aqmaps;
 
 import java.lang.Math;
+import java.util.HashMap;
+import java.util.Optional;
+
+import com.mapbox.geojson.Point;
 
 public class Drone {
 	
-	private double latitude;  // north-south movement
-	private double longitude; // east-west movement
+	// maybe use Point idk
+	
+	private Point position;
+	private HashMap<Point, Sensor> sensors;	
 	
 	private int timesMoved = 0;
 	
@@ -14,12 +20,8 @@ public class Drone {
 	
 	// should maybe standardise lat(itude) etc
 	
-	public Drone(double initialLong, double initialLat) {
-		latitude = initialLat;
-		longitude = initialLong;
-		
-		
-		
+	public Drone(Point initialPos, HashMap<Point, Sensor> sensors) {
+		position = initialPos;
 	}
 	
 	public DroneStatus move(int bearing) {
@@ -33,9 +35,9 @@ public class Drone {
 			// we need to check if its legal to move first
 			
 			
-			
-			latitude += MOVE_DISTANCE*Math.sin(bearing);
-			longitude += MOVE_DISTANCE*Math.cos(bearing);
+//			
+//			latitude += MOVE_DISTANCE*Math.sin(bearing);
+//			longitude += MOVE_DISTANCE*Math.cos(bearing);
 			return DroneStatus.ILLEGAL;
 			
 		} else {
@@ -43,11 +45,35 @@ public class Drone {
 		}
 	}
 	
+	public Point getPosition() {
+		return position;
+	}
+	
+	// be careful of type
+	
+	// idk here Optionals?
+	
+	// For the now
+	// not sure about this one
+//	public Optional<Float> getReading(Point sensor) {
+//		Sensor sensorData = sensors.get(sensor);
+//		if ((distance(position, sensor) < 0.0002) && (sensorData.getBattery() >= 10)) {
+//			return Float.parseFloat(sensorData.getReading());
+//		} else {
+//			return null;
+//		}
+//	}
+	
 	public boolean isLegal(double latitude, double longitude) {
 		return true;
 		// Honestly we need the webserver stuff first before we do other things cause we need the data
 	}
 	
+	
+	// think about moving this
+	private static double distance(Point a, Point b) {
+		return Math.sqrt( Math.pow(a.longitude()-b.longitude(), 2) + Math.pow(a.latitude()-b.latitude(), 2));
+	}
 	
 	
 }
