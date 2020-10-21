@@ -9,6 +9,8 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
+import com.mapbox.turf.TurfConstants;
+import com.mapbox.turf.TurfTransformation;
 
 public class GeojsonGenerator {
 
@@ -37,6 +39,8 @@ public class GeojsonGenerator {
 			
 			var marker = Feature.fromGeometry(point);
 			
+			var circ = Feature.fromGeometry(TurfTransformation.circle(point, 0.0002, 20, TurfConstants.UNIT_DEGREES));
+			
 			marker.addStringProperty("location", sensor.getLocation());
 			
 			if (sensor.getBattery() == -1) {
@@ -58,6 +62,7 @@ public class GeojsonGenerator {
 				marker.addStringProperty("marker-symbol", i<=3 ? "lighthouse" : "danger");	
 			}
 			allMarkers.add(marker);
+			allMarkers.add(circ);
 		}
 		
 		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath));

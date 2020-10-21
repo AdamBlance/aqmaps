@@ -1,7 +1,10 @@
 package uk.ac.ed.inf.aqmaps;
 
 import java.lang.Math;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 import com.mapbox.geojson.Point;
@@ -13,7 +16,9 @@ public class Drone {
 	private Point position;
 	private HashMap<Point, Sensor> sensors;	
 	
-	private int timesMoved = 0;
+	public int timesMoved = 0;
+	
+	private List<Point> path;
 	
 	private static final double MOVE_DISTANCE = 0.0003;
 	private static final int MAX_MOVES = 150;
@@ -22,6 +27,7 @@ public class Drone {
 	
 	public Drone(Point initialPos, HashMap<Point, Sensor> sensors) {
 		position = initialPos;
+		path = new ArrayList<>(Arrays.asList(position));
 	}
 	
 	public DroneStatus move(int bearing) {
@@ -34,12 +40,15 @@ public class Drone {
 			
 			// we need to check if its legal to move first
 			
+			double rad = Math.toRadians(bearing);
+			
 			Point newPos = Point.fromLngLat(
-					position.longitude() + MOVE_DISTANCE*Math.sin(bearing),
-					position.latitude() + MOVE_DISTANCE*Math.cos(bearing));
+					position.longitude() + MOVE_DISTANCE*Math.sin(rad),
+					position.latitude() + MOVE_DISTANCE*Math.cos(rad));
 			
 			if (true) {
 				position = newPos;
+				
 				timesMoved += 1;
 				return DroneStatus.OK;
 			} else {

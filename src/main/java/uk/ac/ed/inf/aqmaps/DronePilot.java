@@ -2,6 +2,7 @@ package uk.ac.ed.inf.aqmaps;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
@@ -35,20 +36,45 @@ public class DronePilot {
 		var path = new ArrayList<Point>();
 		
 		Point dronePos = drone.getPosition();
-		while (distance(dronePos, target) >= 0.0002) {
+		DroneStatus s = DroneStatus.OK; // should fix this
+				
+		while (distance(dronePos, target) >= 0.0002 && s != DroneStatus.OUT_OF_MOVES) {
+			
+
 			
 			int bearing = nearestBearing(dronePos, target);
-			DroneStatus s = drone.move(bearing);
+
+			s = drone.move(bearing);
+			
+
 			
 			// check or something for illegal moves
 			
 			dronePos = drone.getPosition();
+			
+			if (target.longitude() == -3.191257) {
+				System.out.println(distance(dronePos, target));
+			}
+			
 			path.add(dronePos);
 			
 		}
 		
 		return path;
 		
+	}
+	
+	public List<Point> followPath(List<Point> path) {
+		// we ignore the first one because that's where we start
+		// also note that we only need to finish 0.0003 from the start not 0.0002
+		
+		var output = new ArrayList<Point>(Arrays.asList(path.get(0)));
+		
+		for (Point p : path.subList(1, path.size())) {
+			output.addAll(navigateTowards(p));
+		}
+		
+		return output;
 	}
 	
 	// Should return a greedy flight path between all the sensors, I guess ordered by their coords? 
@@ -96,12 +122,12 @@ public class DronePilot {
 		
 		dronePath.add(startingPos);
 		
-		double totalDist = 0;
-		for (int i = 0; i < 34; i++) {
-			totalDist += distance(dronePath.get(i), dronePath.get(i+1));
-		}
-		
-		System.out.println(totalDist/0.0003);
+//		double totalDist = 0;
+//		for (int i = 0; i < 34; i++) {
+//			totalDist += distance(dronePath.get(i), dronePath.get(i+1));
+//		}
+//		
+//		System.out.println(totalDist/0.0003);
 		
 		return dronePath;
 		
@@ -123,7 +149,8 @@ public class DronePilot {
 		// Gets polar theta, converts to degrees, rounds to nearest 10
 		int temp = (int) Math.round(Math.toDegrees(Math.atan2(upDist, sideDist)) / 10.0) * 10;
 		// Rotate coordinates by 90 degrees (polar theta is 0 on y-axis) and then subtract from 360 to make bearing move clockwise
-		int bearing = 360 - Math.floorMod(temp - 90, 360);
+		int bearing = Math.floorMod(360 - Math.floorMod(temp - 90, 360), 360); // second mod incase 360-0 = 0
+		
 		
 		return bearing;
 		
