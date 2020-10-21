@@ -34,11 +34,18 @@ public class Drone {
 			
 			// we need to check if its legal to move first
 			
+			Point newPos = Point.fromLngLat(
+					position.longitude() + MOVE_DISTANCE*Math.sin(bearing),
+					position.latitude() + MOVE_DISTANCE*Math.cos(bearing));
 			
-//			
-//			latitude += MOVE_DISTANCE*Math.sin(bearing);
-//			longitude += MOVE_DISTANCE*Math.cos(bearing);
-			return DroneStatus.ILLEGAL;
+			if (true) {
+				position = newPos;
+				timesMoved += 1;
+				return DroneStatus.OK;
+			} else {
+				return DroneStatus.ILLEGAL;
+			}
+			
 			
 		} else {
 			throw new IllegalArgumentException("Invalid bearing");

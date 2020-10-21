@@ -28,22 +28,21 @@ public class NoFlyZoneChecker {
 			List<Point> polyCoords = building.coordinates().get(0);
 			for (int i = 0; i < polyCoords.size()-2; i++) {
 				
-				// 
 				Point p1 = polyCoords.get(i);
 				Point p2 = polyCoords.get(i+1);
 				
 				Point polyVec = normalise(p1, p2);
 				Point droneVec = normalise(origin, destination);
+				
 				Point originPolyVec = normalise(origin, p1);
 				Point destinationPolyVec = normalise(origin, p2);
 				Point originDroneVec = normalise(p1, origin);
 				Point destinationDroneVec = normalise(p1, destination);
 				
-				intersecting = doesLineSegmentCrossLine(polyVec, originDroneVec, destinationDroneVec)
-						|| doesLineSegmentCrossLine(droneVec, originPolyVec, destinationPolyVec);
-				if (intersecting) {
+				if (doesLineSegmentCrossLine(polyVec, originDroneVec, destinationDroneVec) && doesLineSegmentCrossLine(droneVec, originPolyVec, destinationPolyVec)) {
+					intersecting = true;
 					break;
-				}	
+				}
 			}
 		}
 		return !intersecting;

@@ -29,9 +29,35 @@ public class DronePilot {
 		this.drone = drone;
 	}
 	
+	
+	public List<Point> navigateTowards(Point target) {
+		
+		var path = new ArrayList<Point>();
+		
+		Point dronePos = drone.getPosition();
+		while (distance(dronePos, target) >= 0.0002) {
+			
+			int bearing = nearestBearing(dronePos, target);
+			DroneStatus s = drone.move(bearing);
+			
+			// check or something for illegal moves
+			
+			dronePos = drone.getPosition();
+			path.add(dronePos);
+			
+		}
+		
+		return path;
+		
+	}
+	
 	// Should return a greedy flight path between all the sensors, I guess ordered by their coords? 
 	public List<Point> greedyPlan() {
 
+		
+		// Do greedy but let it navigate 
+		
+		
 		// Would be much quicker to use hashmaps I think?
 		var startingPos = drone.getPosition();
 
@@ -57,10 +83,16 @@ public class DronePilot {
 					}
 				}
 			}
-			curr = minSensor;
-			dronePath.add(curr);  // Path acts as the visited thing
+			if (minSensor.latitude() != 0)	{
+				curr = minSensor;
+				dronePath.add(curr);  // Path acts as the visited thing
+			} else {
+				System.out.println("Stuck!");
+				break;
+			}
 			
 		}
+		
 		
 		dronePath.add(startingPos);
 		
@@ -77,6 +109,24 @@ public class DronePilot {
 	
 	private static double distance(Point a, Point b) {
 		return Math.sqrt( Math.pow(a.longitude()-b.longitude(), 2) + Math.pow(a.latitude()-b.latitude(), 2));
+	}
+	
+	// drone move function takes a bearing and moves
+	// we also need to get nearest bearing to the direction we're trying to move
+	// so we need to calculate the bearing of a line and then round it to nearest 10
+	
+	private static int nearestBearing(Point origin, Point destination) {
+		
+		double upDist = destination.latitude() - origin.latitude();
+		double sideDist = destination.longitude() - origin.longitude();
+		
+		// Gets polar theta, converts to degrees, rounds to nearest 10
+		int temp = (int) Math.round(Math.toDegrees(Math.atan2(upDist, sideDist)) / 10.0) * 10;
+		// Rotate coordinates by 90 degrees (polar theta is 0 on y-axis) and then subtract from 360 to make bearing move clockwise
+		int bearing = 360 - Math.floorMod(temp - 90, 360);
+		
+		return bearing;
+		
 	}
 	
 }
