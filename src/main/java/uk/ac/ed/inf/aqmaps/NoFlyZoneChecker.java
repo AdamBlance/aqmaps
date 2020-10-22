@@ -5,6 +5,9 @@ import java.util.List;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.normalise;
+import static uk.ac.ed.inf.aqmaps.PointUtils.cross;
+
 public class NoFlyZoneChecker {
 
 	private List<Polygon> noFlyZones;
@@ -57,18 +60,5 @@ public class NoFlyZoneChecker {
 		return (cross(lineVec, segmentA) >= 0) ^ (cross(lineVec, segmentB) >= 0);
 	}
 	
-	// The name "normalise" is potentially confusing.
-	// This takes two points that define a line segment. 
-	// It then moves both points so that point a lies at (0, 0).
-	private static Point normalise(Point a, Point b) {
-		return Point.fromLngLat(
-				b.longitude() - a.longitude(),
-				b.latitude() - a.latitude()
-				);
-	}
-	
-	private static double cross(Point a, Point b) {
-		return a.longitude()*b.latitude() - a.latitude()*b.longitude();
-	}
 	
 }

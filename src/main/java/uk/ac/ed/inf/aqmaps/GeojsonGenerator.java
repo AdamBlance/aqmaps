@@ -15,12 +15,12 @@ import com.mapbox.turf.TurfTransformation;
 public class GeojsonGenerator {
 
 	List<Point> flightpath;
-	HashMap<Point,Sensor> visited;
+	HashMap<Point,SensorData> visited;
 	List<Polygon> nfzs;
 	static final String[] COLOURS = {"#00ff00","#40ff00","#80ff00","#c0ff00","#ffc000","#ff8000","#ff4000","#ff0000"};
 
 	
-	public GeojsonGenerator(List<Point> flightpath, HashMap<Point,Sensor> visited, List<Polygon> nfzs) {
+	public GeojsonGenerator(List<Point> flightpath, HashMap<Point,SensorData> visited, List<Polygon> nfzs) {
 		this.flightpath = flightpath;
 		this.visited = visited;
 		this.nfzs = nfzs;

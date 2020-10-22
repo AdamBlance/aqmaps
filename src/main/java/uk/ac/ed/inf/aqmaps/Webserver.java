@@ -19,9 +19,9 @@ public class Webserver {
 	String serverURL;
 	
 	// We just give it the root of the webserver
-	public Webserver( String address, String port ) throws IOException {
+	public Webserver( String url, String port ) throws IOException {
 		
-		serverURL = address + ":" + port;	    
+		serverURL = url + ":" + port;	    
 	}
 	
 	// should keep no-fly-zones/buildings consistent
@@ -40,19 +40,16 @@ public class Webserver {
 		
 	}
 	
-	public HashMap<Point, Sensor> getSensorData(String day, String month, String year) throws IOException {
-		// don't do this use String.format
+	public HashMap<Point, SensorData> getSensorData(String day, String month, String year) throws IOException {
 		String page = getPageAsString(serverURL + String.format("/maps/%s/%s/%s/air-quality-data.json", year, month, day));
 		Gson gson = new Gson();
 		
-		HashMap<Point, Sensor> output = new HashMap<>();
-		for (Sensor sensor : gson.fromJson(page, Sensor[].class)) {
+		HashMap<Point, SensorData> output = new HashMap<>();
+		for (SensorData sensor : gson.fromJson(page, SensorData[].class)) {
 			output.put(getWhat3WordsCoordinates(sensor.getLocation()), sensor);
 		}
 		return output;
 	}
-	
-	// url, address, serverURL are all used here, exceptions
 	
 	public String getPageAsString(String pageUrl) throws IOException {
 		URL url = new URL(pageUrl);

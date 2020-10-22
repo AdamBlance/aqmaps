@@ -21,11 +21,11 @@ public class App {
     	var nfzs = web.getNoFlyZones();    
     	var nfzc = new NoFlyZoneChecker(nfzs);
     	
-    	for (int y = 2020; y <= 2020; y++) {
-    		for (int m = 1; m <= 1; m++) {
-    			for (int d = 4; d <= 4; d++) {
+    	for (int y = 2020; y <= 2021; y++) {
+    		for (int m = 1; m <= 12; m++) {
+    			for (int d = 1; d <= 31; d++) {
     				
-    				HashMap<Point, Sensor> sensors;
+    				HashMap<Point, SensorData> sensors;
     				
     				try {
     					sensors = web.getSensorData(String.format("%02d", d), String.format("%02d", m), Integer.toString(y));
@@ -42,7 +42,7 @@ public class App {
     				
     				var gjg = new GeojsonGenerator(path, sensors, nfzs);
     				System.out.println(gjg.generateMap());
-    				System.out.println(drone.timesMoved);
+    				System.out.println(drone.getTimesMoved());
     				
     				TimeUnit.SECONDS.sleep(1);
     				

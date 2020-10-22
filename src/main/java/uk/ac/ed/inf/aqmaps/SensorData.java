@@ -1,6 +1,6 @@
 package uk.ac.ed.inf.aqmaps;
 
-public class Sensor {
+public class SensorData {
 
 	// watch out with float
 	

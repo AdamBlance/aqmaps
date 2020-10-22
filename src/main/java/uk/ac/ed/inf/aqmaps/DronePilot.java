@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-
+import java.util.Optional;
 import java.lang.Math;
 
 import com.mapbox.geojson.Feature;
@@ -13,18 +13,24 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
+import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
+import static uk.ac.ed.inf.aqmaps.PointUtils.nearestBearing;
+import static uk.ac.ed.inf.aqmaps.PointUtils.oppositeBearing;
 
 public class DronePilot {
 
+	// recording the path should be the responsibility of the drone
+	
 	// This should take in the start point, sensor points and try to devise a good path
 	
 	private Drone drone;
 	private NoFlyZoneChecker noFlyZoneChecker;
-	private HashMap<Point, Sensor> sensors;	
+	private HashMap<Point, SensorData> sensors;	
 	
 	private List<Point> flightPlan;
 	
-	public DronePilot(Drone drone, HashMap<Point, Sensor> sensors, NoFlyZoneChecker noFlyZoneChecker) {
+	public DronePilot(Drone drone, HashMap<Point, SensorData> sensors, NoFlyZoneChecker noFlyZoneChecker) {
 		this.noFlyZoneChecker = noFlyZoneChecker;
 		this.sensors = sensors;
 		this.drone = drone;
@@ -34,52 +40,72 @@ public class DronePilot {
 	public List<Point> navigateTowards(Point target) {
 		
 		var path = new ArrayList<Point>();
+				
+//		System.out.println("navigating");
 		
-		Point dronePos = drone.getPosition();
-		DroneStatus s = DroneStatus.OK; // should fix this
-		int lastBearingTaken = 1000;  // just initialising
-		
-		
-		// oh shit this is just navigate towards
-		
-		System.out.println("navigating");
-		
-		// this is so broken
-		
-		while (distance(dronePos, target) >= 0.0002 && s != DroneStatus.OUT_OF_MOVES) {
+		while (distanceBetween(drone.getPosition(), target) >= 0.0002 && !drone.outOfMoves()) {
 			
-			
-			
-			int bearing = nearestBearing(dronePos, target);
+			int bearing = nearestBearing(drone.getPosition(), target);
 
-			s = drone.move(bearing); // try to move the drone and see what happens
+			var newPosition = drone.move(bearing); // try to move the drone and see what happens
 			
-			
-			// can move the while up here instead of if else
 			
 			// lets rewrite
 			// we need to record or look at the last move / bearing the drone took
 			// we need to record whether the drone is currently navigating around a building
 			// don't think that matters much since we are navigating between points
 			
-			if (s != DroneStatus.ILLEGAL) {
-				System.out.println("Moved normally");
-				dronePos = drone.getPosition();
-				lastBearingTaken = bearing;
-				path.add(dronePos);
+			if (newPosition.isPresent()) {
+//				System.out.println("Moved normally");
+				path.add(drone.getPosition());
 			} else {
-				// first look to left, then right
 				
-				// this will probably get stuck in concave areas
 				
-				int offset = 0;
-				System.out.println("feeling...");
+//				System.out.println("Feeling...");
 				
-				boolean acwLock = false;
-				boolean cwLock = false;
+				Optional<Point> newClockwisePosition = Optional.empty();
+				Optional<Point> newAnticlockwisePosition = Optional.empty();
+
+				// this is a mess
 				
-				while (true) {
-					offset += 10;
+				int cwBearing = -69;
+				int acwBearing = 420;
+				
+				int invLastBear = oppositeBearing(drone.getLastBearing());
+				
+				for (int offset = 10; mod360(bearing + offset) != invLastBear; offset += 10) {
+					newClockwisePosition = drone.testMove(mod360(bearing + offset));
+					if (newClockwisePosition.isPresent()) {
+						cwBearing = mod360(bearing + offset);
+						break;
+					}
+				}
+				
+				for (int offset = 10; mod360(bearing - offset) != invLastBear; offset += 10) {
+					newAnticlockwisePosition = drone.testMove(mod360(bearing - offset));
+					if (newAnticlockwisePosition.isPresent()) {
+						acwBearing = mod360(bearing - offset);
+						break;
+					}
+				}
+				
+				if (newClockwisePosition.isEmpty() && newAnticlockwisePosition.isEmpty()) {
+					throw new RuntimeException("We're stuck. Nice.");
+				} else if (newClockwisePosition.isEmpty()) {
+					drone.move(acwBearing);
+				} else if (newAnticlockwisePosition.isEmpty()) {
+					drone.move(cwBearing);
+				} else {
+					
+					if (distanceBetween(newClockwisePosition.get(), target) > distanceBetween(newAnticlockwisePosition.get(), target)) {
+						drone.move(acwBearing);
+					} else {
+						drone.move(cwBearing);
+					}
+				}
+				
+//				while (true) {
+//					offset += 10;
 					
 					// might need a catch here for out of moves, not sure					
 //					System.out.println(String.format("%03d,%03d", mod360(bearing-offset), mod360(bearing+offset)));
@@ -89,46 +115,39 @@ public class DronePilot {
 						// anticlockwise_doubleback = true
 						// stop checking anti_clockwise
 					
-					int returningBearing = mod360(lastBearingTaken - 180);
-					int acwOffset = mod360(bearing - offset);
-					int cwOffset = mod360(bearing + offset);
+//					int returningBearing = mod360(drone.getLastBearing() - 180);
+//					int acwOffset = mod360(bearing - offset);
+//					int cwOffset = mod360(bearing + offset);
+//					
+//					if (acwOffset == returningBearing) acwLock = true;
+//					if (cwOffset == returningBearing) cwLock = true;
 					
-					if (acwOffset == returningBearing) acwLock = true;
-					if (cwOffset == returningBearing) cwLock = true;
-					
-					// it's moving even though it shouldn't
-					if (!acwLock) {
-						if (drone.move(acwOffset) == DroneStatus.OK) {
-							lastBearingTaken = acwOffset;
-							System.out.println("Moved (anti-clockwise)");
-							break;
-						}
-					} 
-					if (!cwLock) {
-						if (drone.move(cwOffset) == DroneStatus.OK) {
-							lastBearingTaken = cwOffset;
-							System.out.println("Moved (clockwise)");
-							break;
-						}
-					}
+//					if (!acwLock) {
+//						if (drone.move(acwOffset) == DroneStatus.OK) {
+//							lastBearingTaken = acwOffset;
+//							System.out.println("Moved (anti-clockwise)");
+//							break;
+//						}
+//					} 
+//					if (!cwLock) {
+//						if (drone.move(cwOffset) == DroneStatus.OK) {
+//							lastBearingTaken = cwOffset;
+//							System.out.println("Moved (clockwise)");
+//							break;
+//						}
+//					}
 					// terrible code
-				}
+//				}
 				
 				
 				// I think this is all broken because either drone pos isn't updated or break breaks from both while loops
 				
-				dronePos = drone.getPosition();
-				path.add(dronePos);
-				
+				path.add(drone.getPosition());
 			}
-			
-			System.out.println(distance(dronePos, target) + " " + target.longitude());
-			
 		}
-		
 		return path;
-		
 	}
+	
 	
 	public List<Point> followPath(List<Point> path) {
 		// we ignore the first one because that's where we start
@@ -167,7 +186,7 @@ public class DronePilot {
 			minSensor = Point.fromLngLat(0, 0);
 			
 			for (Point sensor : sensors.keySet()) {
-				var dist = distance(curr, sensor);
+				var dist = distanceBetween(curr, sensor);
 				if (dist < minDistance) { //  && noFlyZoneChecker.isMoveLegal(curr, sensor)
 					if (!dronePath.contains(sensor)) {
 						minDistance = dist;
@@ -199,33 +218,5 @@ public class DronePilot {
 		
 	}
 	
-	
-	
-	private static double distance(Point a, Point b) {
-		return Math.sqrt( Math.pow(a.longitude()-b.longitude(), 2) + Math.pow(a.latitude()-b.latitude(), 2));
-	}
-	
-	// drone move function takes a bearing and moves
-	// we also need to get nearest bearing to the direction we're trying to move
-	// so we need to calculate the bearing of a line and then round it to nearest 10
-	
-	private static int nearestBearing(Point origin, Point destination) {
-		
-		double upDist = destination.latitude() - origin.latitude();
-		double sideDist = destination.longitude() - origin.longitude();
-		
-		// Gets polar theta, converts to degrees, rounds to nearest 10
-		int temp = (int) Math.round(Math.toDegrees(Math.atan2(upDist, sideDist)) / 10.0) * 10;
-		// Rotate coordinates by 90 degrees (polar theta is 0 on y-axis) and then subtract from 360 to make bearing move clockwise
-		int bearing = Math.floorMod(360 - Math.floorMod(temp - 90, 360), 360); // second mod incase 360-0 = 0
-		
-		
-		return bearing;
-		
-	}
-	
-	private static int mod360(int bearing) {
-		return Math.floorMod(bearing, 360);
-	}
 	
 }

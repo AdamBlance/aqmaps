@@ -9,15 +9,18 @@ import java.util.Optional;
 
 import com.mapbox.geojson.Point;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
+
 public class Drone {
 	
 	// maybe use Point idk
 	
 	private Point position;
-	private HashMap<Point, Sensor> sensors;	
+	private HashMap<Point, SensorData> sensors;
 	private NoFlyZoneChecker nfzc;
 	
-	public int timesMoved = 0;
+	private int timesMoved = 0;
+	private int lastBearing = -1;  // This might break if the first move hits a wall
 	
 	private List<Point> path;
 	
@@ -26,51 +29,54 @@ public class Drone {
 	
 	// should maybe standardise lat(itude) etc
 	
-	public Drone(Point initialPos, HashMap<Point, Sensor> sensors, NoFlyZoneChecker nfzc) {
+	public Drone(Point initialPos, HashMap<Point, SensorData> sensors, NoFlyZoneChecker nfzc) {
 		position = initialPos;
 		path = new ArrayList<>(Arrays.asList(position));
 		this.nfzc = nfzc;
 	}
 	
-	// Needs to return the legality of the move 
-	// Also where the move will land
+	// Maybe some redundancy here
 	
-	
-	
-	public DroneStatus move(int bearing) {
-		if (timesMoved == MAX_MOVES) {
-			return DroneStatus.OUT_OF_MOVES;
-		}
-		if (bearing % 10 == 0 && bearing >= 0 && bearing <= 350) {
-			
-			double rad = Math.toRadians(bearing);
-			
-			Point newPos = Point.fromLngLat(
-					position.longitude() + MOVE_DISTANCE*Math.sin(rad),
-					position.latitude() + MOVE_DISTANCE*Math.cos(rad));
-			
-			if (nfzc.isMoveLegal(position, newPos)) {
-				position = newPos;
-				
-				timesMoved += 1;
-				return DroneStatus.OK;
-			} else {
-				return DroneStatus.ILLEGAL;
-			}
-			
-			
+	public Optional<Point> testMove(int bearing) {
+		
+		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
+		
+		if (nfzc.isMoveLegal(position, destination) && !outOfMoves()) {
+			return Optional.ofNullable(destination);
 		} else {
-			throw new IllegalArgumentException("Invalid bearing");
+			return Optional.empty();
 		}
+	}
+	
+	public Optional<Point> move(int bearing) {
+		
+		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
+		
+		if (nfzc.isMoveLegal(position, destination) && !outOfMoves()) {
+			position = destination;
+			timesMoved += 1;
+			lastBearing = bearing;
+			return Optional.ofNullable(position);
+		} else {
+			return Optional.empty();
+		}
+	}
+	
+	public boolean outOfMoves() {
+		return timesMoved >= MAX_MOVES;
+	}
+	
+	public int getTimesMoved() {
+		return timesMoved;
 	}
 	
 	public Point getPosition() {
 		return position;
 	}
 	
-	// be careful of type
-	
-	// idk here Optionals?
+	public int getLastBearing() {
+		return lastBearing;
+	}
 	
 	// For the now
 	// not sure about this one
@@ -82,17 +88,5 @@ public class Drone {
 //			return null;
 //		}
 //	}
-	
-	public boolean isLegal(double latitude, double longitude) {
-		return true;
-		// Honestly we need the webserver stuff first before we do other things cause we need the data
-	}
-	
-	
-	// think about moving this
-	private static double distance(Point a, Point b) {
-		return Math.sqrt( Math.pow(a.longitude()-b.longitude(), 2) + Math.pow(a.latitude()-b.latitude(), 2));
-	}
-	
 	
 }
