@@ -15,6 +15,7 @@ public class Drone {
 	
 	private Point position;
 	private HashMap<Point, Sensor> sensors;	
+	private NoFlyZoneChecker nfzc;
 	
 	public int timesMoved = 0;
 	
@@ -25,13 +26,14 @@ public class Drone {
 	
 	// should maybe standardise lat(itude) etc
 	
-	public Drone(Point initialPos, HashMap<Point, Sensor> sensors) {
+	public Drone(Point initialPos, HashMap<Point, Sensor> sensors, NoFlyZoneChecker nfzc) {
 		position = initialPos;
 		path = new ArrayList<>(Arrays.asList(position));
+		this.nfzc = nfzc;
 	}
 	
 	public DroneStatus move(int bearing) {
-		if (timesMoved == 150) {
+		if (timesMoved == MAX_MOVES) {
 			return DroneStatus.OUT_OF_MOVES;
 		}
 		if (bearing % 10 == 0 
@@ -46,7 +48,7 @@ public class Drone {
 					position.longitude() + MOVE_DISTANCE*Math.sin(rad),
 					position.latitude() + MOVE_DISTANCE*Math.cos(rad));
 			
-			if (true) {
+			if (nfzc.isMoveLegal(position, newPos)) {
 				position = newPos;
 				
 				timesMoved += 1;

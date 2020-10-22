@@ -21,9 +21,9 @@ public class App {
     	var nfzs = web.getNoFlyZones();    
     	var nfzc = new NoFlyZoneChecker(nfzs);
     	
-    	for (int y = 2020; y <= 2021; y++) {
-    		for (int m = 1; m <= 12; m++) {
-    			for (int d = 1; d <= 31; d++) {
+    	for (int y = 2020; y <= 2020; y++) {
+    		for (int m = 1; m <= 1; m++) {
+    			for (int d = 4; d <= 4; d++) {
     				
     				HashMap<Point, Sensor> sensors;
     				
@@ -33,7 +33,7 @@ public class App {
     					continue;
     				}
     				
-    				var drone = new Drone(Point.fromLngLat(-3.1878, 55.9444), sensors);
+    				var drone = new Drone(Point.fromLngLat(-3.1878, 55.9444), sensors, nfzc);
     			
     								
     				var test = new DronePilot(drone, sensors, nfzc);

@@ -65,7 +65,7 @@ public class GeojsonGenerator {
 			allMarkers.add(circ);
 		}
 		
-		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath));
+		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath.subList(0, flightpath.size())));
 		allMarkers.add(flightLine);
 		
 		for (var p : nfzs) {

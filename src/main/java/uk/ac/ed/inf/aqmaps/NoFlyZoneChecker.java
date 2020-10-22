@@ -26,7 +26,7 @@ public class NoFlyZoneChecker {
 		for (Polygon building : noFlyZones) {
 			// Get the coordinates that make up each no-fly-zone building
 			List<Point> polyCoords = building.coordinates().get(0);
-			for (int i = 0; i < polyCoords.size()-2; i++) {
+			for (int i = 0; i < polyCoords.size()-1; i++) {
 				
 				Point p1 = polyCoords.get(i);
 				Point p2 = polyCoords.get(i+1);

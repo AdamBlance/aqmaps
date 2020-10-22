@@ -37,26 +37,92 @@ public class DronePilot {
 		
 		Point dronePos = drone.getPosition();
 		DroneStatus s = DroneStatus.OK; // should fix this
-				
+		int lastBearingTaken = 1000;  // just initialising
+		
+		
+		// oh shit this is just navigate towards
+		
+		System.out.println("navigating");
+		
+		// this is so broken
+		
 		while (distance(dronePos, target) >= 0.0002 && s != DroneStatus.OUT_OF_MOVES) {
 			
-
+			
 			
 			int bearing = nearestBearing(dronePos, target);
 
-			s = drone.move(bearing);
+			s = drone.move(bearing); // try to move the drone and see what happens
 			
-
 			
-			// check or something for illegal moves
+			// can move the while up here instead of if else
 			
-			dronePos = drone.getPosition();
+			// lets rewrite
+			// we need to record or look at the last move / bearing the drone took
+			// we need to record whether the drone is currently navigating around a building
+			// don't think that matters much since we are navigating between points
 			
-			if (target.longitude() == -3.191257) {
-				System.out.println(distance(dronePos, target));
+			if (s != DroneStatus.ILLEGAL) {
+				System.out.println("Moved normally");
+				dronePos = drone.getPosition();
+				lastBearingTaken = bearing;
+				path.add(dronePos);
+			} else {
+				// first look to left, then right
+				
+				// this will probably get stuck in concave areas
+				
+				int offset = 0;
+				System.out.println("feeling...");
+				
+				boolean acwLock = false;
+				boolean cwLock = false;
+				
+				while (true) {
+					offset += 10;
+					
+					// might need a catch here for out of moves, not sure					
+//					System.out.println(String.format("%03d,%03d", mod360(bearing-offset), mod360(bearing+offset)));
+					
+					
+					// if mod360(bearing - offset) == mod360(lastBearingTaken - 180)
+						// anticlockwise_doubleback = true
+						// stop checking anti_clockwise
+					
+					int returningBearing = mod360(lastBearingTaken - 180);
+					int acwOffset = mod360(bearing - offset);
+					int cwOffset = mod360(bearing + offset);
+					
+					if (acwOffset == returningBearing) acwLock = true;
+					if (cwOffset == returningBearing) cwLock = true;
+					
+					// it's moving even though it shouldn't
+					if (!acwLock) {
+						if (drone.move(acwOffset) == DroneStatus.OK) {
+							lastBearingTaken = acwOffset;
+							System.out.println("Moved (anti-clockwise)");
+							break;
+						}
+					} 
+					if (!cwLock) {
+						if (drone.move(cwOffset) == DroneStatus.OK) {
+							lastBearingTaken = cwOffset;
+							System.out.println("Moved (clockwise)");
+							break;
+						}
+					}
+					// terrible code
+				}
+				
+				
+				// I think this is all broken because either drone pos isn't updated or break breaks from both while loops
+				
+				dronePos = drone.getPosition();
+				path.add(dronePos);
+				
 			}
 			
-			path.add(dronePos);
+			System.out.println(distance(dronePos, target) + " " + target.longitude());
 			
 		}
 		
@@ -102,8 +168,8 @@ public class DronePilot {
 			
 			for (Point sensor : sensors.keySet()) {
 				var dist = distance(curr, sensor);
-				if (dist < minDistance) {
-					if (!dronePath.contains(sensor) && noFlyZoneChecker.isMoveLegal(curr, sensor)) {
+				if (dist < minDistance) { //  && noFlyZoneChecker.isMoveLegal(curr, sensor)
+					if (!dronePath.contains(sensor)) {
 						minDistance = dist;
 						minSensor = sensor;
 					}
@@ -154,6 +220,10 @@ public class DronePilot {
 		
 		return bearing;
 		
+	}
+	
+	private static int mod360(int bearing) {
+		return Math.floorMod(bearing, 360);
 	}
 	
 }
