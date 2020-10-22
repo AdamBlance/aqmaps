@@ -32,15 +32,16 @@ public class Drone {
 		this.nfzc = nfzc;
 	}
 	
+	// Needs to return the legality of the move 
+	// Also where the move will land
+	
+	
+	
 	public DroneStatus move(int bearing) {
 		if (timesMoved == MAX_MOVES) {
 			return DroneStatus.OUT_OF_MOVES;
 		}
-		if (bearing % 10 == 0 
-				&& bearing >= 0 
-				&& bearing <= 350) {
-			
-			// we need to check if its legal to move first
+		if (bearing % 10 == 0 && bearing >= 0 && bearing <= 350) {
 			
 			double rad = Math.toRadians(bearing);
 			
