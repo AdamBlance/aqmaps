@@ -41,10 +41,16 @@ public class App {
     				var path = test.followPath(test.greedyPlan());
     				
     				var gjg = new GeojsonGenerator(path, sensors, nfzs);
-    				System.out.println(gjg.generateMap());
-    				System.out.println(drone.getTimesMoved());
     				
-    				TimeUnit.SECONDS.sleep(1);
+    				
+    				
+    				
+    				int count = drone.getTimesMoved();
+    				
+    				System.out.println(count);
+    				if (true) {
+    					System.out.println(gjg.generateMap());
+    				}
     				
 
     				

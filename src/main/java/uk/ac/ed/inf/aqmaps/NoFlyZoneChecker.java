@@ -16,13 +16,18 @@ public class NoFlyZoneChecker {
 		this.noFlyZones = noFlyZones;
 	}
 	
-	
 	// https://martin-thoma.com/how-to-check-if-two-line-segments-intersect/
 	// The cross product is useful here because it's sign changes depending on stuff
 	// Doesn't work in 2D so just use first two axes
 	// Points represent vectors instead
 	
 	public boolean isMoveLegal(Point origin, Point destination) {
+		// can figure out if this is hardcoded or what later
+		var lng = destination.longitude();
+		var lat = destination.latitude();
+		if (lng <= -3.192473 || lng >= -3.184319 || lat <= 55.942617 || lat >= 55.946233) {
+			return false;
+		}
 		
 		boolean intersecting = false;
 		

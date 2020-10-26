@@ -1,5 +1,7 @@
 package uk.ac.ed.inf.aqmaps;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.cross;
+
 import com.mapbox.geojson.Point;
 
 public class PointUtils {
@@ -11,6 +13,7 @@ public class PointUtils {
 		return Math.sqrt(Math.pow(a.longitude() - b.longitude(), 2) + Math.pow(a.latitude() - b.latitude(), 2));
 	}
 	
+	// Get the bearing you take to go from origin to destination rounded to nearest 10
 	public static int nearestBearing(Point origin, Point destination) {	
 		double latDist = destination.latitude() - origin.latitude();
 		double longDist = destination.longitude() - origin.longitude();
@@ -23,6 +26,7 @@ public class PointUtils {
 		return bearing;
 	}
 	
+	// Returns the point you would arrive at if moving distance from position with bearing
 	public static Point moveDestination(Point position, double distance, int bearing) {
 		if (bearing % 10 == 0 && bearing >= 0 && bearing <= 350) {
 			double rad = Math.toRadians(bearing);
@@ -35,10 +39,20 @@ public class PointUtils {
 		}	
 	}
 
+	
+	// lineVector - A vector representing a line (only bearing is important here)
+	// endpointA/endpointB - The endpoints of the line segment we are checking for collision
+	private static boolean lineSegmentCrossesLine(Point lineVector, Point endpointA, Point endpointB) {
+		return (cross(lineVector, endpointA) >= 0) ^ (cross(lineVector, endpointB) >= 0);
+	}
+	
+	
+	// Keeps bearings between 0-350 when adding or subtracting
 	public static int mod360(int bearing) {
 		return Math.floorMod(bearing, 360);
 	}
 	
+	// Returns the bearing in the opposite direction
 	public static int oppositeBearing(int bearing) {
 		return mod360(bearing - 180);
 	}
@@ -52,6 +66,9 @@ public class PointUtils {
 				b.latitude() - a.latitude());
 	}
 	
+	// Cross product is only defined in 3D
+	// It is helpful here for checking which side of a line a point is on (the sign changes)
+	// We're only solving for one component of the cross product
 	public static double cross(Point a, Point b) {
 		return a.longitude()*b.latitude() - a.latitude()*b.longitude();
 	}
