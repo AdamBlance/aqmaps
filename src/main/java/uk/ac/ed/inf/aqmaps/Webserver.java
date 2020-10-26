@@ -19,9 +19,9 @@ public class Webserver {
 	String serverURL;
 	
 	// We just give it the root of the webserver
-	public Webserver( String url, String port ) throws IOException {
+	public Webserver(String url) throws IOException {
 		
-		serverURL = url + ":" + port;	    
+		serverURL = url;	    
 	}
 	
 	// should keep no-fly-zones/buildings consistent

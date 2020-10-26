@@ -11,6 +11,9 @@ import com.mapbox.geojson.Point;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
+
+
 public class Drone {
 	
 	// maybe use Point idk
@@ -21,6 +24,8 @@ public class Drone {
 	
 	private int timesMoved = 0;
 	private int lastBearing = -1;  // This might break if the first move hits a wall
+	
+	private List<LogData> flightLog = new ArrayList<>();
 	
 	private List<Point> path;
 	
@@ -36,6 +41,7 @@ public class Drone {
 	}
 	
 	// Maybe some redundancy here
+	// Just for safety
 	
 	public Optional<Point> testMove(int bearing) {
 		
@@ -53,9 +59,17 @@ public class Drone {
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
 		
 		if (nfzc.isMoveLegal(position, destination) && !outOfMoves()) {
-			position = destination;
 			timesMoved += 1;
+//			var log = new LogData(timesMoved, position, bearing, destination, );
+			
+			position = destination;
+
 			lastBearing = bearing;
+			
+
+			
+
+			
 			return Optional.ofNullable(position);
 		} else {
 			return Optional.empty();
@@ -78,15 +92,19 @@ public class Drone {
 		return lastBearing;
 	}
 	
-	// For the now
-	// not sure about this one
-//	public Optional<Float> getReading(Point sensor) {
-//		Sensor sensorData = sensors.get(sensor);
-//		if ((distance(position, sensor) < 0.0002) && (sensorData.getBattery() >= 10)) {
-//			return Float.parseFloat(sensorData.getReading());
-//		} else {
-//			return null;
-//		}
-//	}
+	public Optional<String> readSensor(Point sensor) {
+		if (distanceBetween(position, sensor) < 0.0002) {
+			var data = sensors.get(sensor);
+			
+			if (data.getBattery() >= 10.0) {
+				return Optional.of(data.getReading());
+			} else {
+				return Optional.empty();
+			}
+			
+		} else {
+			throw new RuntimeException("You numpty. Too far away from sensor.");
+		}
+	}
 	
 }
