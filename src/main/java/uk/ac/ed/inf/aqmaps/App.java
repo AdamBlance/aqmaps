@@ -12,26 +12,26 @@ public class App {
 	
     public static void main( String[] args ) throws IOException, InterruptedException {
     	
-    	String day = args[0];
-    	String month = args[1];
-    	String year = args[2];
-    	var startLat = Double.parseDouble(args[3]);
-    	var startLng = Double.parseDouble(args[4]);
-    	var seed = Integer.parseInt(args[5]);
-    	String port = args[6];
-    	
-    	var startPoint = Point.fromLngLat(startLng, startLat);
-    	
-    	var webserver = new Webserver("http://localhost:" + port);
-    	
-    	var sensors = webserver.getSensorData(day, month, year);
-    	var noFlyZoneChecker = new NoFlyZoneChecker(webserver.getNoFlyZones());
-    	
-    	var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
-    	
-    	var pilot = new DronePilot(drone, sensors, noFlyZoneChecker);
-    	
-    	pilot.followPath(pilot.greedyPlan());
+//    	String day = args[0];
+//    	String month = args[1];
+//    	String year = args[2];
+//    	var startLat = Double.parseDouble(args[3]);
+//    	var startLng = Double.parseDouble(args[4]);
+//    	var seed = Integer.parseInt(args[5]);
+//    	String port = args[6];
+//    	
+//    	var startPoint = Point.fromLngLat(startLng, startLat);
+//    	
+//    	var webserver = new Webserver("http://localhost:" + port);
+//    	
+//    	var sensors = webserver.getSensorData(day, month, year);
+//    	var noFlyZoneChecker = new NoFlyZoneChecker(webserver.getNoFlyZones());
+//    	
+//    	var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
+//    	
+//    	var pilot = new FlightPlanner(drone, sensors, noFlyZoneChecker);
+//    	
+//    	pilot.followPath(pilot.greedyPlan());
     	
     	
     	
