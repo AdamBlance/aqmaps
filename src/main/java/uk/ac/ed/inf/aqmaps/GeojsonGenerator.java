@@ -75,10 +75,9 @@ public class GeojsonGenerator {
 		var markerFeature = FeatureCollection.fromFeatures(allMarkers);
 //		System.out.println(markerFeature.toJson());
 		
-		
-		
 		return markerFeature.toJson();
 		
 	}
+	
 	
 }

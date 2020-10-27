@@ -51,12 +51,7 @@ public class PointUtils {
 	public static int mod360(int bearing) {
 		return Math.floorMod(bearing, 360);
 	}
-	
-	// Returns the bearing in the opposite direction
-	public static int oppositeBearing(int bearing) {
-		return mod360(bearing - 180);
-	}
-	
+
 	// The name "normalise" is potentially confusing.
 	// This takes two points that define a line segment. 
 	// It then moves both points so that point a lies at (0, 0).

@@ -1,11 +1,8 @@
 package uk.ac.ed.inf.aqmaps;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
 import java.lang.Math;
 
 import com.mapbox.geojson.Feature;
@@ -14,9 +11,6 @@ import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
-import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
-import static uk.ac.ed.inf.aqmaps.PointUtils.nearestBearing;
-import static uk.ac.ed.inf.aqmaps.PointUtils.oppositeBearing;
 
 public class FlightPlanner {
 
@@ -26,8 +20,6 @@ public class FlightPlanner {
 	
 	private NoFlyZoneChecker noFlyZoneChecker;
 	private HashMap<Point, SensorData> sensors;	
-	
-	private List<Point> flightPlan;
 	
 	public FlightPlanner(HashMap<Point, SensorData> sensors, NoFlyZoneChecker noFlyZoneChecker) {
 		this.noFlyZoneChecker = noFlyZoneChecker;

@@ -1,6 +1,5 @@
 package uk.ac.ed.inf.aqmaps;
 
-import java.lang.Math;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,7 +10,6 @@ import com.mapbox.geojson.Point;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 import static uk.ac.ed.inf.aqmaps.PointUtils.nearestBearing;
-import static uk.ac.ed.inf.aqmaps.PointUtils.oppositeBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
 
@@ -24,6 +22,7 @@ public class Drone {
 	
 	private int timesMoved = 0;
 	private int lastBearing = -1;  // This might break if the first move hits a wall
+	private Point lastPosition;
 	
 	// This is good for logging, probably less helpful for geojson map
 	private List<LogData> flightLog = new ArrayList<>();
@@ -45,81 +44,87 @@ public class Drone {
 	
 	// TODO: Write common terminology somewhere and standardise it
 	public void followPath(List<Point> path) {
-		// we ignore the first one because that's where we start				
+		// we ignore the first one because that's where we start
 		for (Point target : path.subList(1, path.size())) {
 			navigateTowards(target);
 			readSensor(target);
+			
+			// lol idk maybe navigate towards should only move once or something so 
+			// we can put the log in the same place cause at the moment I'm just trying to jam it in
+			
 		}
 	}
 	
 	// TODO: Return false or something if drone can't reach sensor
-	public void navigateTowards(Point target) {
+	private boolean navigateTowards(Point target) {
 		
-		while (distanceBetween(position, target) >= SENSOR_READ_DISTANCE && !outOfMoves()) {
-			
+		while (true) {
 			int bearing = nearestBearing(position, target);
 			
-			if (move(bearing).isEmpty()) {  // If move was not executed (illegal)
-				
+			boolean moved = move(bearing);
+			if (!moved) {
 				move(bearingScan(bearing, target));
-				
-
-				
 			}
+			
+			String w3wLocation = null;
+			if (distanceBetween(position, target) <= SENSOR_READ_DISTANCE) {
+				w3wLocation = sensors.get(target).getLocation();
+			}
+			
+			// We actually need to use the read function somewhere and store the data
+			
+			flightLog.add(new LogData(timesMoved, lastPosition, bearing, position, w3wLocation));
+			
 		}
+		
+		
 	}
 	
 	
-	public int bearingScan(int originalBearing, Point target) {
+	// This will return a bearing that does not collide with a building
+	// TODO: Add lookahead
+	// TODO: Rename the variables for the love of god
+	private int bearingScan(int originalBearing, Point target) {
 		
 		Optional<Point> newClockwisePosition = Optional.empty();
 		Optional<Point> newAnticlockwisePosition = Optional.empty();
 
-		int cwBearing = -69;
-		int acwBearing = 420;
+		int backtrackBearing = mod360(lastBearing - 180);  // Bearing that would return the drone to where it just was
 		
-		int invLastBear = oppositeBearing(lastBearing);
-		
-		for (int offset = 10; mod360(originalBearing + offset) != invLastBear; offset += 10) {
-			newClockwisePosition = testMove(mod360(originalBearing + offset));
-			if (newClockwisePosition.isPresent()) {
-				cwBearing = mod360(originalBearing + offset);
-				break;
-			}
+		int cwBearing = mod360(originalBearing + 10);
+		while (cwBearing != backtrackBearing) {
+			newClockwisePosition = testMove(cwBearing);
+			if (newClockwisePosition.isPresent()) break;
+			cwBearing = mod360(cwBearing + 10);
 		}
 		
-		for (int offset = 10; mod360(originalBearing - offset) != invLastBear; offset += 10) {
-			newAnticlockwisePosition = testMove(mod360(originalBearing - offset));
-			if (newAnticlockwisePosition.isPresent()) {
-				acwBearing = mod360(originalBearing - offset);
-				break;
-			}
+		int acwBearing = mod360(originalBearing - 10);
+		while (acwBearing != backtrackBearing) {
+			newAnticlockwisePosition = testMove(acwBearing);
+			if (newAnticlockwisePosition.isPresent()) break;
+			acwBearing = mod360(cwBearing - 10);
 		}
 		
 		if (newClockwisePosition.isEmpty() && newAnticlockwisePosition.isEmpty()) {
 			throw new RuntimeException("We're stuck. Nice.");
 		} else if (newClockwisePosition.isEmpty()) {
-			move(acwBearing);
+			return acwBearing;
 		} else if (newAnticlockwisePosition.isEmpty()) {
-			move(cwBearing);
+			return cwBearing;
 		} else {
-			
 			if (distanceBetween(newClockwisePosition.get(), target) > distanceBetween(newAnticlockwisePosition.get(), target)) {
-				move(acwBearing);
+				return acwBearing;
 			} else {
-				move(cwBearing);
+				return cwBearing;
 			}
 		}
-		
-		return 1;
-		
 	}
 
 		
 	// Maybe some redundancy here
 	// Just for safety
 	
-	public Optional<Point> testMove(int bearing) {
+	private Optional<Point> testMove(int bearing) {
 		
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
 		
@@ -130,46 +135,35 @@ public class Drone {
 		}
 	}
 	
-	public Optional<Point> move(int bearing) {
+	private boolean move(int bearing) {
 		
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
 		
 		if (nfzc.isMoveLegal(position, destination) && !outOfMoves()) {
 			timesMoved += 1;
-//			var log = new LogData(timesMoved, position, bearing, destination, );
-			
-			position = destination;
-
+			lastPosition = position;
 			lastBearing = bearing;
-			
-
-			
-
-			
-			return Optional.ofNullable(position);
+			position = destination;
+			return true;
 		} else {
-			return Optional.empty();
+			return false;
 		}
 	}
 	
-	public boolean outOfMoves() {
+	private boolean outOfMoves() {
 		return timesMoved >= MAX_MOVES;
 	}
 	
-	public int getTimesMoved() {
-		return timesMoved;
-	}
-	
-	public Point getPosition() {
+	private Point getPosition() {
 		return position;
 	}
 	
-	public int getLastBearing() {
+	private int getLastBearing() {
 		return lastBearing;
 	}
 	
-	public Optional<String> readSensor(Point sensor) {
-		if (distanceBetween(position, sensor) < 0.0002) {
+	private Optional<String> readSensor(Point sensor) {
+		if (distanceBetween(position, sensor) < SENSOR_READ_DISTANCE) {
 			var data = sensors.get(sensor);
 			
 			if (data.getBattery() >= 10.0) {
