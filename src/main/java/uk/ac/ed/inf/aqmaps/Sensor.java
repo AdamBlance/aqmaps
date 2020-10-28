@@ -2,15 +2,19 @@ package uk.ac.ed.inf.aqmaps;
 
 import com.mapbox.geojson.Point;
 
-public class SensorData {
-
-	// watch out with float
+public class Sensor {
 	
 	private Point point;
 	private String location;
 	private double battery;
-	private String reading;
+	private double reading;
 	
+	public Point getPoint() {
+		return point;
+	}
+	public void setPoint(Point point) {
+		this.point = point;
+	}
 	public String getLocation() {
 		return location;
 	}
@@ -20,16 +24,13 @@ public class SensorData {
 	public double getBattery() {
 		return battery;
 	}
-	public void setBattery(float battery) {
+	public void setBattery(double battery) {
 		this.battery = battery;
 	}
-	
-	public String getReading() {
+	public double getReading() {
 		return reading;
 	}
 	public void setReading(String reading) {
-		this.reading = reading;
+		this.reading = Double.parseDouble(reading);
 	}
-
-	
 }

@@ -51,6 +51,18 @@ public class Webserver {
 		return output;
 	}
 	
+	// TODO: Use arrays where possible instead of lists
+	public Sensor[] getSensorData2(String day, String month, String year) throws IOException {
+		String page = getPageAsString(serverURL + String.format("/maps/%s/%s/%s/air-quality-data.json", year, month, day));
+		Gson gson = new Gson();
+		
+		var sensors = gson.fromJson(page, Sensor[].class);
+		for (var s : sensors) {
+			s.setPoint(getWhat3WordsCoordinates(s.getLocation()));
+		}
+		return sensors;
+	}
+	
 	public String getPageAsString(String pageUrl) throws IOException {
 		URL url = new URL(pageUrl);
 		Scanner scanner = new Scanner(url.openStream(), "UTF-8");

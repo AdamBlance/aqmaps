@@ -39,7 +39,7 @@ public class GeojsonGenerator {
 			
 			var marker = Feature.fromGeometry(point);
 			
-			var circ = Feature.fromGeometry(TurfTransformation.circle(point, 0.0002, 20, TurfConstants.UNIT_DEGREES));
+//			var circ = Feature.fromGeometry(TurfTransformation.circle(point, 0.0002, 20, TurfConstants.UNIT_DEGREES));
 			
 			marker.addStringProperty("location", sensor.getLocation());
 			
@@ -62,7 +62,7 @@ public class GeojsonGenerator {
 				marker.addStringProperty("marker-symbol", i<=3 ? "lighthouse" : "danger");	
 			}
 			allMarkers.add(marker);
-			allMarkers.add(circ);
+//			allMarkers.add(circ);
 		}
 		
 		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath.subList(0, flightpath.size())));
@@ -78,6 +78,7 @@ public class GeojsonGenerator {
 		return markerFeature.toJson();
 		
 	}
+	
 	
 	
 }

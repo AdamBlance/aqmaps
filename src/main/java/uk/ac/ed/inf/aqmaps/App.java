@@ -1,9 +1,14 @@
 package uk.ac.ed.inf.aqmaps;
 
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.mapbox.geojson.Point;
@@ -32,8 +37,25 @@ public class App {
     	var planner = new FlightPlanner(sensors, noFlyZoneChecker);
     	var route = planner.greedyPath(startPoint);
     	
+    	System.out.println("started");
+    	
     	drone.followPath(route);
     	
+    	System.out.println("ended");
+    	
+    	writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), drone.getLog());
+//    	writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), )
+    	
+    }
+    
+    private static void writeFile(String filename, List<String> lines) throws IOException {
+		new File(filename).createNewFile();
+    	var writer = new BufferedWriter(new FileWriter(filename));
+    	for (var line : lines) {
+    		writer.write(line);
+    		writer.newLine();
+    	}
+    	writer.close();
     }
     
 //    private void helper() throws IOException {
