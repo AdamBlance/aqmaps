@@ -15,12 +15,12 @@ import com.mapbox.turf.TurfTransformation;
 public class GeojsonGenerator {
 
 	List<Point> flightpath;
-	HashMap<Point,SensorData> visited;
+	HashMap<Sensor, SensorReport> visited;
 	List<Polygon> nfzs;
 	static final String[] COLOURS = {"#00ff00","#40ff00","#80ff00","#c0ff00","#ffc000","#ff8000","#ff4000","#ff0000"};
 
 	
-	public GeojsonGenerator(List<Point> flightpath, HashMap<Point,SensorData> visited, List<Polygon> nfzs) {
+	public GeojsonGenerator(List<Point> flightpath, HashMap<Sensor, SensorReport> visited, List<Polygon> nfzs) {
 		this.flightpath = flightpath;
 		this.visited = visited;
 		this.nfzs = nfzs;
@@ -31,48 +31,45 @@ public class GeojsonGenerator {
 	
 	public String generateMap() {
 		
-		var allMarkers = new ArrayList<Feature>();
+		var allFeatures = new ArrayList<Feature>();
 		
-		for (var entry : visited.entrySet()) {
-			var point = entry.getKey();
-			var sensor = entry.getValue();
+		for (Sensor sensor: visited.keySet()) {
 			
-			var marker = Feature.fromGeometry(point);
+			SensorReport report = visited.get(sensor);
+			
+			var marker = Feature.fromGeometry(sensor.getPoint());
 			
 //			var circ = Feature.fromGeometry(TurfTransformation.circle(point, 0.0002, 20, TurfConstants.UNIT_DEGREES));
 			
 			marker.addStringProperty("location", sensor.getLocation());
 			
-			if (sensor.getBattery() == -1) {
+			if (!report.getVisited()) {
 				marker.addStringProperty("rgb-string", "#aaaaaa");
 				marker.addStringProperty("marker-color", "#aaaaaa");
-				
-			} else if (sensor.getBattery() < 10) {
+			} else if (!report.getValid()) {
 				marker.addStringProperty("rgb-string", "#000000");
 				marker.addStringProperty("marker-color", "#000000");
 				marker.addStringProperty("marker-symbol", "cross");
-				
 			} else {
-				// This assumes that 255 is the max, not 256. If it breaks, we know why.
-				var i = ((int) Double.parseDouble(sensor.getReading())) / 32;
+				var reading = Double.parseDouble(sensor.getReading());
+				int i = (reading <= 255.0) ? ((int) reading) / 32 : 7;  // If less than 255, calculate colour. If greater, set max colour.
 				var colour = COLOURS[i];
-				
 				marker.addStringProperty("rgb-string", colour);
 				marker.addStringProperty("marker-color", colour);
 				marker.addStringProperty("marker-symbol", i<=3 ? "lighthouse" : "danger");	
 			}
-			allMarkers.add(marker);
+			allFeatures.add(marker);
 //			allMarkers.add(circ);
 		}
 		
-		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath.subList(0, flightpath.size())));
-		allMarkers.add(flightLine);
+		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath));
+		allFeatures.add(flightLine);
 		
 		for (var p : nfzs) {
-			allMarkers.add(Feature.fromGeometry(p));
+			allFeatures.add(Feature.fromGeometry(p));
 		}
 		
-		var markerFeature = FeatureCollection.fromFeatures(allMarkers);
+		var markerFeature = FeatureCollection.fromFeatures(allFeatures);
 //		System.out.println(markerFeature.toJson());
 		
 		return markerFeature.toJson();

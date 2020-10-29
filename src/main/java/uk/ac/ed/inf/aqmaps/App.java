@@ -30,21 +30,23 @@ public class App {
     	var webserver = new Webserver("http://localhost:" + port);
     	
     	var sensors = webserver.getSensorData(day, month, year);
-    	var noFlyZoneChecker = new NoFlyZoneChecker(webserver.getNoFlyZones());
+    	
+    	var nfzs = webserver.getNoFlyZones();
+    	
+    	var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
     	
     	var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
     	
     	var planner = new FlightPlanner(sensors, noFlyZoneChecker);
     	var route = planner.greedyPath(startPoint);
     	
-    	System.out.println("started");
     	
     	drone.followPath(route);
-    	
-    	System.out.println("ended");
+
+    	var gjg = new GeojsonGenerator(drone.getPath(), drone.getReports(), nfzs);
     	
     	writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), drone.getLog());
-//    	writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), )
+    	writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), new ArrayList<String>(Arrays.asList(gjg.generateMap())));
     	
     }
     

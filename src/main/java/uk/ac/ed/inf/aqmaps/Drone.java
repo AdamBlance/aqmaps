@@ -19,7 +19,7 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
 public class Drone {
 	
 	private Point position;
-	private HashMap<Point, SensorData> sensors;
+	
 	private NoFlyZoneChecker nfzc;
 	
 	private int timesMoved = 0;
@@ -31,7 +31,13 @@ public class Drone {
 	
 	// This will be the one we give to the geojson thing
 	private List<Point> path = new ArrayList<>();
-	private List<Double> pollution = new ArrayList<>();
+	
+	// The geojson needs:
+		// ordered list of points to draw
+		// list of sensors and their visited status
+	
+	private List<Sensor> sensors;
+	private HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
 	
 	// it would be interesting to know what to abbreviate, maybe look it up
 	private static final double MOVE_DISTANCE = 0.0003;
@@ -39,57 +45,65 @@ public class Drone {
 	private static final double SENSOR_READ_DISTANCE = 0.0002;
 	private static final int MAX_MOVES = 150;
 	
-	public Drone(Point startPosition, HashMap<Point, SensorData> sensors, NoFlyZoneChecker nfzc) {
+	public Drone(Point startPosition, List<Sensor> sensors, NoFlyZoneChecker nfzc) {
 		position = startPosition;
 		path.add(position);
 		this.nfzc = nfzc;
+
 		this.sensors = sensors;
+		for (var s : sensors) {
+			sensorReports.put(s, new SensorReport(false, false));
+		}
 	}
 	
+	
+	// navigate towards could just move one thing at a time
+	// if it moves normally, return something
+	// if it arrives within range of sensor, return something different
+	
+	
 	// TODO: Write common terminology somewhere and standardise it
-	public void followPath(List<Point> apath) {
-		// we ignore the first one because that's where we start
-		for (Point target : apath.subList(1, apath.size() - 1)) {
+	public void followPath(List<Sensor> path) {
+		var startPosition = position;
+		for (Sensor target : path) {
 			navigateTowards(target);
+			var reading = readSensor(target);
+			var report = sensorReports.get(target);
+			if (reading.isPresent()) {
+				report.setValid(true);
+			}
+			report.setVisited(true);
 		}
-		System.out.println("trying to get back");
-		// you can't navigate towards something that isn't a sensor
-		navigateTowards(apath.get(0));
-		System.out.println("got back");
+		navigateTowards(Sensor.dummySensor(startPosition));  // Return home
 	}
 	
 	// TODO: Return false or something if drone can't reach sensor
-	private boolean navigateTowards(Point target) {
+	private boolean navigateTowards(Sensor sensor) {
 		
 		boolean arrived = false;
 		while (!arrived) {
 			
 			if (outOfMoves()) throw new RuntimeException("Out of moves");
 			
-			System.out.println("finding bearing");
-			int bearing = nearestBearing(position, target);
+			var sensorPoint = sensor.getPoint();
 			
+			int bearing = nearestBearing(position, sensorPoint);
 			
-			System.out.println("Trying move");
 			boolean moved = move(bearing);
 			if (!moved) {
-				System.out.println("Trying to move legally");
-				move(bearingScan(bearing, target));
+				move(bearingScan(bearing, sensorPoint));
 			}
 			
 			String w3wLocation = null;
-			if (distanceBetween(position, target) <= SENSOR_READ_DISTANCE) {
-				System.out.println(target.toString());
-				if (sensors.containsKey(target)) w3wLocation = sensors.get(target).getLocation();
+			if (distanceBetween(position, sensorPoint) <= SENSOR_READ_DISTANCE) {
+				var sensorLocation = sensor.getLocation();
+				if (!sensorLocation.equals("dummy")) {
+					w3wLocation = sensorLocation;
+				}
 				arrived = true;
 			}
-			
-			System.out.println("stuck");
-			
-			// We actually need to use the read function somewhere and store the data
 			logMove(w3wLocation);	
 		}
-		System.out.println("not");
 		return true;
 	}
 	
@@ -129,6 +143,7 @@ public class Drone {
 			acwBearing = mod360(acwBearing - 10);
 		}
 		
+		
 		if (newClockwisePosition.isEmpty() && newAnticlockwisePosition.isEmpty()) {
 			throw new RuntimeException("We're stuck. Nice.");
 		} else if (newClockwisePosition.isEmpty()) {
@@ -136,7 +151,15 @@ public class Drone {
 		} else if (newAnticlockwisePosition.isEmpty()) {
 			return cwBearing;
 		} else {
-			if (distanceBetween(newClockwisePosition.get(), target) > distanceBetween(newAnticlockwisePosition.get(), target)) {
+			var clockD = distanceBetween(newClockwisePosition.get(), target);
+			var aclockD = distanceBetween(newAnticlockwisePosition.get(), target); 
+			
+			System.out.println(cwBearing);
+			System.out.println(clockD);
+			System.out.println(acwBearing);
+			System.out.println(aclockD);
+			
+			if (clockD > aclockD) {
 				return acwBearing;
 			} else {
 				return cwBearing;
@@ -168,6 +191,7 @@ public class Drone {
 			lastPosition = position;
 			lastBearing = bearing;
 			position = destination;
+			path.add(position);
 			return true;
 		} else {
 			return false;
@@ -178,24 +202,26 @@ public class Drone {
 		return timesMoved >= MAX_MOVES;
 	}
 	
+	public List<Point> getPath() {
+		return path;
+	}
+	
 	public List<String> getLog() {
 		return flightLog;
 	}
 	
-	public List<Double> getPollution() {
-		return pollution;
+	public HashMap<Sensor, SensorReport> getReports() {
+		return sensorReports;
 	}
 	
-	private Optional<Double> readSensor(Point sensor) {
-		if (distanceBetween(position, sensor) < SENSOR_READ_DISTANCE) {
-			var data = sensors.get(sensor);
+	private Optional<Double> readSensor(Sensor sensor) {
+		if (distanceBetween(position, sensor.getPoint()) < SENSOR_READ_DISTANCE) {
 			
-			if (data.getBattery() >= 10.0) {
-				return Optional.of(Double.parseDouble(data.getReading()));
+			if (sensor.getBattery() >= 10.0) {
+				return Optional.of(Double.parseDouble(sensor.getReading()));
 			} else {
 				return Optional.empty();
 			}
-			
 		} else {
 			throw new RuntimeException("You numpty. Too far away from sensor.");
 		}
