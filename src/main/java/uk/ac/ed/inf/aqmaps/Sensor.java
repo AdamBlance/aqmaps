@@ -2,41 +2,28 @@ package uk.ac.ed.inf.aqmaps;
 
 import com.mapbox.geojson.Point;
 
-public class Sensor {
+public class Sensor extends Waypoint{
 	
-	private Point point;
-	private String location;
+	private String w3wAddress;
 	private double battery;
-	private String reading;
+	private double reading;
 	
-	public static Sensor dummySensor(Point point) {
-		var dummy = new Sensor();
-		dummy.setPoint(point);
-		dummy.setLocation("dummy");
-		return dummy;
+	public Sensor(Point point, String w3wAddress, double battery, double reading) {
+		super(point);
+		this.w3wAddress = w3wAddress;
+		this.battery = battery;
+		this.reading = reading;		
 	}
-	public Point getPoint() {
-		return point;
+	
+	public String getW3wAddress() {
+		return w3wAddress;
 	}
-	public void setPoint(Point point) {
-		this.point = point;
-	}
-	public String getLocation() {
-		return location;
-	}
-	public void setLocation(String location) {
-		this.location = location;
-	}
+	
 	public double getBattery() {
 		return battery;
 	}
-	public void setBattery(double battery) {
-		this.battery = battery;
-	}
-	public String getReading() {
+	
+	public double getReading() {
 		return reading;
-	}
-	public void setReading(String reading) {
-		this.reading = reading;
 	}
 }

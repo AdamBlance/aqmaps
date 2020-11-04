@@ -19,9 +19,7 @@ public class Webserver {
 	
 	String serverURL;
 	
-	// We just give it the root of the webserver
-	public Webserver(String url) throws IOException {
-		
+	public Webserver(String url) throws IOException {		
 		serverURL = url;	    
 	}
 	
@@ -35,36 +33,33 @@ public class Webserver {
 				
 		for (Feature feature : FeatureCollection.fromJson(page).features()) {
 			noFlyZones.add((Polygon) feature.geometry());
-		}
-		
+		}	
 		return noFlyZones;
-		
 	}
-	
-//	public HashMap<Point, SensorData> getSensorData(String day, String month, String year) throws IOException {
-//		String page = getPageAsString(serverURL + String.format("/maps/%s/%s/%s/air-quality-data.json", year, month, day));
-//		Gson gson = new Gson();
-//		
-//		HashMap<Point, SensorData> output = new HashMap<>();
-//		for (SensorData sensor : gson.fromJson(page, SensorData[].class)) {
-//			output.put(getWhat3WordsCoordinates(sensor.getLocation()), sensor);
-//		}
-//		return output;
-//	}
 	
 	// TODO: Use arrays where possible instead of lists
 	public List<Sensor> getSensorData(String day, String month, String year) throws IOException {
-		String page = getPageAsString(serverURL + String.format("/maps/%s/%s/%s/air-quality-data.json", year, month, day));
-		Gson gson = new Gson();
+		var page = getPageAsString(serverURL + String.format("/maps/%s/%s/%s/air-quality-data.json", year, month, day));
 		
-		var sensors = Arrays.asList(gson.fromJson(page, Sensor[].class));
-		for (var s : sensors) {
-			s.setPoint(getWhat3WordsCoordinates(s.getLocation()));
+		var jsonSensors = new Gson().fromJson(page, JsonObject[].class);
+		var sensors = new ArrayList<Sensor>();
+		
+		for (var j : jsonSensors) {
+			String w3wAddress = j.get("location").getAsString();
+			Point point = getWhat3WordsCoordinates(w3wAddress);
+			double battery = j.get("battery").getAsDouble();
+			double reading;
+			try {
+				reading = Double.parseDouble(j.get("reading").getAsString());
+			} catch (NumberFormatException e) {
+				reading = -1.0;
+			}
+			sensors.add(new Sensor(point, w3wAddress, battery, reading));
 		}
 		return sensors;
 	}
 	
-	public String getPageAsString(String pageUrl) throws IOException {
+	private String getPageAsString(String pageUrl) throws IOException {
 		URL url = new URL(pageUrl);
 		Scanner scanner = new Scanner(url.openStream(), "UTF-8");
 		scanner.useDelimiter("\\A");
@@ -73,15 +68,13 @@ public class Webserver {
 		return page;
 	}
 	
-	public Point getWhat3WordsCoordinates(String w3wAddress) throws IOException {
+	private Point getWhat3WordsCoordinates(String w3wAddress) throws IOException {
 		String page = getPageAsString(serverURL + String.format("/words/%s/details.json", w3wAddress.replace('.', '/')));
-		Gson gson = new Gson();
-		JsonObject json = gson.fromJson(page, JsonObject.class);
-		JsonObject coords = json.getAsJsonObject("coordinates");
+		var jsonAddress = new Gson().fromJson(page, JsonObject.class);
+		var coords = jsonAddress.getAsJsonObject("coordinates");
 		return Point.fromLngLat(
 				coords.get("lng").getAsDouble(),
 				coords.get("lat").getAsDouble());
-		
 	}
 	
 }

@@ -10,13 +10,13 @@ public class SensorReport {
 		this.valid = valid;
 	}
 	
-	public boolean getVisited() {
+	public boolean isVisited() {
 		return visited;
 	}
 	public void setVisited(boolean visited) {
 		this.visited = visited;
 	}
-	public boolean getValid() {
+	public boolean isValid() {
 		return valid;
 	}
 	public void setValid(boolean valid) {

@@ -2,19 +2,19 @@ package uk.ac.ed.inf.aqmaps;
 
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import com.mapbox.geojson.Point;
 
+
+
 public class App {	
-	
+		
     public static void main( String[] args ) throws IOException, InterruptedException {
     	
     	String day = args[0];
@@ -28,30 +28,33 @@ public class App {
     	var startPoint = Point.fromLngLat(startLng, startLat);
     	
     	var webserver = new Webserver("http://localhost:" + port);
-    	
     	var sensors = webserver.getSensorData(day, month, year);
-    	
     	var nfzs = webserver.getNoFlyZones();
     	
     	var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
     	
-    	var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
+    	var pilot = new Pilot(new Drone(startPoint, sensors, noFlyZoneChecker));
     	
-    	var planner = new FlightPlanner(sensors, noFlyZoneChecker);
-    	var route = planner.greedyPath(startPoint);
+    	var route = new FlightPlanner(sensors, noFlyZoneChecker).greedyPath(startPoint);
     	
-    	
-    	drone.followPath(route);
+    	pilot.followRoute(route);
 
-    	var gjg = new GeojsonGenerator(drone.getPath(), drone.getReports(), nfzs);
+    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs);
     	
-    	writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), drone.getLog());
+    	writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), pilot.getLog());
     	writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), new ArrayList<String>(Arrays.asList(gjg.generateMap())));
+    	
+    	System.out.println("DONE");
     	
     }
     
     private static void writeFile(String filename, List<String> lines) throws IOException {
-		new File(filename).createNewFile();
+		var file = new File(filename);
+		if (file.exists()) {
+			file.delete();
+		}
+		file.createNewFile();
+		
     	var writer = new BufferedWriter(new FileWriter(filename));
     	for (var line : lines) {
     		writer.write(line);

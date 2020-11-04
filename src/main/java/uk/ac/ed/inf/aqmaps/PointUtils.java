@@ -5,8 +5,6 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.cross;
 import com.mapbox.geojson.Point;
 
 public class PointUtils {
-
-	private PointUtils() {}
 	
 	// Distance between two points
 	public static double distanceBetween(Point a, Point b) {

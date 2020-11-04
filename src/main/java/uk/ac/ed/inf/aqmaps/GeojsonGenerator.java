@@ -39,19 +39,19 @@ public class GeojsonGenerator {
 			
 			var marker = Feature.fromGeometry(sensor.getPoint());
 			
-//			var circ = Feature.fromGeometry(TurfTransformation.circle(point, 0.0002, 20, TurfConstants.UNIT_DEGREES));
+			var circ = Feature.fromGeometry(TurfTransformation.circle(sensor.getPoint(), 0.0002, 20, TurfConstants.UNIT_DEGREES));
 			
-			marker.addStringProperty("location", sensor.getLocation());
+			marker.addStringProperty("location", sensor.getW3wAddress());
 			
-			if (!report.getVisited()) {
+			if (!report.isVisited()) {
 				marker.addStringProperty("rgb-string", "#aaaaaa");
 				marker.addStringProperty("marker-color", "#aaaaaa");
-			} else if (!report.getValid()) {
+			} else if (!report.isValid()) {
 				marker.addStringProperty("rgb-string", "#000000");
 				marker.addStringProperty("marker-color", "#000000");
 				marker.addStringProperty("marker-symbol", "cross");
 			} else {
-				var reading = Double.parseDouble(sensor.getReading());
+				var reading = sensor.getReading();
 				int i = (reading <= 255.0) ? ((int) reading) / 32 : 7;  // If less than 255, calculate colour. If greater, set max colour.
 				var colour = COLOURS[i];
 				marker.addStringProperty("rgb-string", colour);
@@ -59,7 +59,7 @@ public class GeojsonGenerator {
 				marker.addStringProperty("marker-symbol", i<=3 ? "lighthouse" : "danger");	
 			}
 			allFeatures.add(marker);
-//			allMarkers.add(circ);
+			allFeatures.add(circ);
 		}
 		
 		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath));
