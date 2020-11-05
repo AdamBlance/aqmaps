@@ -52,7 +52,6 @@ public class Pilot {
 		return navigateTowards(start);  // True if we make it back, false if not
 	}
 	
-	// TODO: Return false or something if drone can't reach sensor
 	private boolean navigateTowards(Waypoint waypoint) {
 		
 		boolean arrived = false;
@@ -107,9 +106,9 @@ public class Pilot {
 		return log;
 	}
 	
+	// This might getting stuck, maybe not. 
 	// This will return a bearing that does not collide with a building
 	// TODO: Add lookahead
-	// TODO: Always just call this first. If the nearest bearing is already legal just return it. 
 	// TODO: Caching for lookahead
 	private int bestLegalBearing(Point target, int lookahead) {
 		

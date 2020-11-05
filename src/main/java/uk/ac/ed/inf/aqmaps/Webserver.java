@@ -59,6 +59,12 @@ public class Webserver {
 		return sensors;
 	}
 	
+	// This broke, that's really bad 
+	// Exception in thread "main" java.net.BindException: Address already in use: connect
+
+	
+	// We're meant to use another thing for web stuff, should change to that
+	
 	private String getPageAsString(String pageUrl) throws IOException {
 		URL url = new URL(pageUrl);
 		Scanner scanner = new Scanner(url.openStream(), "UTF-8");

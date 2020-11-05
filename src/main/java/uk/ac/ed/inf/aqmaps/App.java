@@ -2,14 +2,16 @@ package uk.ac.ed.inf.aqmaps;
 
 import java.io.BufferedWriter;
 import java.io.File;
-
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.mapbox.geojson.Point;
+import com.mapbox.geojson.Polygon;
 
 
 
@@ -28,23 +30,25 @@ public class App {
     	var startPoint = Point.fromLngLat(startLng, startLat);
     	
     	var webserver = new Webserver("http://localhost:" + port);
-    	var sensors = webserver.getSensorData(day, month, year);
+//    	var sensors = webserver.getSensorData(day, month, year);
     	var nfzs = webserver.getNoFlyZones();
     	
-    	var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
+    	fly(webserver, nfzs, startPoint);
     	
-    	var pilot = new Pilot(new Drone(startPoint, sensors, noFlyZoneChecker));
-    	
-    	var route = new FlightPlanner(sensors, noFlyZoneChecker).greedyPath(startPoint);
-    	
-    	pilot.followRoute(route);
-
-    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs);
-    	
-    	writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), pilot.getLog());
-    	writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), new ArrayList<String>(Arrays.asList(gjg.generateMap())));
-    	
-    	System.out.println("DONE");
+//    	var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
+//    	
+//    	var pilot = new Pilot(new Drone(startPoint, sensors, noFlyZoneChecker));
+//    	
+//    	var route = new FlightPlanner(sensors, noFlyZoneChecker).greedyPath(startPoint);
+//    	
+//    	pilot.followRoute(route);
+//
+//    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs);
+//    	
+//    	writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), pilot.getLog());
+//    	writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), new ArrayList<String>(Arrays.asList(gjg.generateMap())));
+//    	
+//    	System.out.println("DONE");
     	
     }
     
@@ -62,6 +66,56 @@ public class App {
     	}
     	writer.close();
     }
+    
+    private static void fly(Webserver web, List<Polygon> nfzs, Point startPoint) throws IOException, InterruptedException {
+    	
+    	double count = 0;
+    	double avg = 0;
+	    for (int y = 2020; y <= 2021; y++) {
+			for (int m = 1; m <= 12; m++) {
+				for (int d = 1; d <= 31; d++) {
+					
+					List<Sensor> sensors;
+					
+					try {
+						sensors = web.getSensorData(String.format("%02d", d), String.format("%02d", m), Integer.toString(y));
+					} catch (FileNotFoundException e) {
+						continue;
+					}
+					
+					count += 1;
+					
+					var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
+					
+					var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
+					
+			    	var pilot = new Pilot(drone);
+			    	
+			    	var route = new FlightPlanner(sensors, noFlyZoneChecker).twoOptPath(startPoint);
+			    	
+			    	boolean arrived = pilot.followRoute(route);
+
+			    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs).generateMap();
+			    	
+			    	if (!arrived) {
+			    		System.out.println("AAAAHHHHHHH");
+			    		System.out.println(gjg);
+			    	}
+			    	
+//			    	System.out.println(gjg);
+			    	System.out.println(count);
+			    	avg += drone.getTimesMoved();
+			    	TimeUnit.MILLISECONDS.sleep(50);
+//			    	System.in.read();
+				}
+			}
+		}
+	    System.out.println(avg/count);
+    }
+    
+    // greedy average - 103.07250341997263
+    // two opt without break - 89.30232558139535
+    // two opt with break - 88.88098495212039
     
 //    private void helper() throws IOException {
 //		var web = new Webserver("http://localhost:80");

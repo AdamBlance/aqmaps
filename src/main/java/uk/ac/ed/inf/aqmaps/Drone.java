@@ -42,20 +42,6 @@ public class Drone {
 		this.sensors = sensors;
 	}
 	
-//	private void logMove(@Nullable String w3wLocation) {
-//		var log = String.format("%d,%f,%f,%d,%f,%f,%s",
-//				timesMoved,
-//				lastPosition.longitude(),
-//				lastPosition.latitude(),
-//				lastBearing,
-//				position.longitude(),
-//				position.latitude(),
-//				w3wLocation == null ? "null" : w3wLocation);
-//		flightLog.add(log);
-//	}
-	
-
-
 		
 	// Maybe some redundancy here
 	// Just for safety

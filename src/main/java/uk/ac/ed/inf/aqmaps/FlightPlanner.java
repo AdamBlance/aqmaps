@@ -45,6 +45,49 @@ public class FlightPlanner {
 		return dronePath;
 	}
 	
+	public List<Sensor> twoOptPath(Point start) {
+		var path = greedyPath(start);
+		
+		// Go through every possible subpath in the path and reverse it if its shorter
+		
+		boolean improved = true;
+		double bestLength = pathLength(start, path);
+		while (improved) {
+			improved = false;
+			outerloop:
+			for (int i = 0; i < path.size(); i++) {
+				for (int j = i+1; j < path.size(); j++) {
+					var newPath = modifiedPath(path, i, j);
+					double dist = pathLength(start, newPath);
+					if (dist < bestLength) {
+						improved = true;
+						bestLength = dist;
+						path = newPath;
+						break outerloop;
+					}
+				}
+			}
+		}
+		return path;
+	}
+	
+	private List<Sensor> modifiedPath(List<Sensor> path, int s, int e) {
+		var output = new ArrayList<>(path);
+		for (int i = s; i <= e; i++) {
+			output.set(i, path.get(e-(i-s)));
+		}
+		return output;
+	}
+	
+	private double pathLength(Point start, List<Sensor> route) {
+		double length = distanceBetween(start, route.get(0).getPoint());
+		for (int i = 0; i < route.size() - 1; i++) {
+			length += distanceBetween(route.get(i).getPoint(), route.get(i+1).getPoint());
+		}
+		length += distanceBetween(route.get(route.size() - 1).getPoint(), start);
+		return length;
+	}
+	
 	private static Sensor closestSensor(Point point, List<Sensor> sensors) {
 		return sensors.stream()
 				.min((Sensor a, Sensor b) -> Double.compare(distanceBetween(point, a.getPoint()), distanceBetween(point, b.getPoint())))
@@ -89,12 +132,5 @@ public class FlightPlanner {
 //		}
 //		dronePath.add(start);
 //		return dronePath;
-	
-	
-	// TODO: Implement this to optimise the path if you have time
-	// Note that the start pos appears twice in the path, might break 2-opt
-	public List<Point> twoOpt(List<Point> path){
-		return new ArrayList<Point>();
-	}
 	
 }

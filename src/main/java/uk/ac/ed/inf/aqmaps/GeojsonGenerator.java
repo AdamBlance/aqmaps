@@ -26,9 +26,6 @@ public class GeojsonGenerator {
 		this.nfzs = nfzs;
 	}
 	
-	// This is stupid but for the now:
-	// - Battery = -1 if not visited
-	
 	public String generateMap() {
 		
 		var allFeatures = new ArrayList<Feature>();
@@ -70,7 +67,6 @@ public class GeojsonGenerator {
 		}
 		
 		var markerFeature = FeatureCollection.fromFeatures(allFeatures);
-//		System.out.println(markerFeature.toJson());
 		
 		return markerFeature.toJson();
 		
