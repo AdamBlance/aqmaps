@@ -9,7 +9,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import com.mapbox.geojson.Feature;
+import com.mapbox.geojson.FeatureCollection;
+import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
@@ -83,30 +87,46 @@ public class App {
 						continue;
 					}
 					
+					List<Feature> features = new ArrayList<>();
+					for (var s : sensors) {
+						features.add(Feature.fromGeometry(s.getPoint()));
+					}
+					
+					
+					
 					count += 1;
 					
 					var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
 					
 					var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
 					
-			    	var pilot = new Pilot(drone);
+			    	var pilot = new Pilot(drone, noFlyZoneChecker);
 			    	
 			    	var route = new FlightPlanner(sensors, noFlyZoneChecker).twoOptPath(startPoint);
+			    	
+			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Sensor::getPoint).collect(Collectors.toList()))));
+			    	
+			    	System.out.println(FeatureCollection.fromFeatures(features).toJson());
 			    	
 			    	boolean arrived = pilot.followRoute(route);
 
 			    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs).generateMap();
 			    	
-			    	if (!arrived) {
-			    		System.out.println("AAAAHHHHHHH");
-			    		System.out.println(gjg);
+
+			    	if (drone.getTimesMoved() >= 150) {
+			    		System.out.println("AHHHHH");
 			    	}
 			    	
-//			    	System.out.println(gjg);
+			    	System.out.println(drone.getTimesMoved());
+
+			    	
+			    	System.out.println(gjg);
+			    	
 			    	System.out.println(count);
 			    	avg += drone.getTimesMoved();
-			    	TimeUnit.MILLISECONDS.sleep(50);
-//			    	System.in.read();
+			    	TimeUnit.MILLISECONDS.sleep(10);
+			    	System.in.read();
+			    	
 				}
 			}
 		}

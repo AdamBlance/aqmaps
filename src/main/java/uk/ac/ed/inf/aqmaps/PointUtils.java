@@ -2,6 +2,9 @@ package uk.ac.ed.inf.aqmaps;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.cross;
 
+import java.util.Random;
+
+import com.mapbox.geojson.BoundingBox;
 import com.mapbox.geojson.Point;
 
 public class PointUtils {
@@ -26,11 +29,16 @@ public class PointUtils {
 	
 	// Returns the point you would arrive at if moving distance from position with bearing
 	public static Point moveDestination(Point position, double distance, int bearing) {
+		
+		Random rand = new Random();
+		
 		if (bearing % 10 == 0 && bearing >= 0 && bearing <= 350) {
 			double rad = Math.toRadians(bearing);
 			var newPosition = Point.fromLngLat(
 					position.longitude() + distance*Math.sin(rad),
-					position.latitude() + distance*Math.cos(rad));
+					position.latitude() + distance*Math.cos(rad),
+					BoundingBox.fromPoints(Point.fromLngLat(-3.0*rand.nextDouble(), 50.0), Point.fromLngLat(-2.0, 52)));
+					
 			return newPosition;
 		} else {
 			throw new IllegalArgumentException("Invalid bearing - must a multiple of 10 between 0-350.");

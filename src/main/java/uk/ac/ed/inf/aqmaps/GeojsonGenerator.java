@@ -56,7 +56,7 @@ public class GeojsonGenerator {
 				marker.addStringProperty("marker-symbol", i<=3 ? "lighthouse" : "danger");	
 			}
 			allFeatures.add(marker);
-			allFeatures.add(circ);
+//			allFeatures.add(circ);
 		}
 		
 		var flightLine = Feature.fromGeometry(LineString.fromLngLats(flightpath));
