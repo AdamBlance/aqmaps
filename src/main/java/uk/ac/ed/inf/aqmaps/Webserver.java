@@ -1,86 +1,111 @@
 package uk.ac.ed.inf.aqmaps;
 
 import java.io.IOException;
-import java.net.URL;
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Scanner;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
 public class Webserver {
 	
-	String serverURL;
+	private static Webserver singletonInstance = null;
 	
-	public Webserver(String url) throws IOException {		
-		serverURL = url;	    
-	}
+	private String serverURL;
+	private String port;
+	
+	private final HttpClient client = HttpClient.newHttpClient();
+	private final int MAX_HTTP_REQUEST_ATTEMPTS = 10;
 	
 	// should keep no-fly-zones/buildings consistent
 	
-	public List<Polygon> getNoFlyZones() throws IOException {
+	public static Webserver getInstance() {
+		if (singletonInstance == null) {
+			singletonInstance = new Webserver();
+		}
+		return singletonInstance;
+	}
+	
+	public void configure(String serverURL, String port) {
+		this.serverURL = serverURL;
+		this.port = port;
+	}
+	
+	public List<Polygon> getNoFlyZones() throws UnexpectedHTTPResponseException {
+		var geojsonData = getResourceAsString(String.format("%s:%s/buildings/no-fly-zones.geojson", serverURL, port));			
 		
-		String page = getPageAsString(serverURL + "/buildings/no-fly-zones.geojson");
-		
-		List<Polygon> noFlyZones = new ArrayList<>();
-				
-		for (Feature feature : FeatureCollection.fromJson(page).features()) {
+		var noFlyZones = new ArrayList<Polygon>();
+		for (var feature : FeatureCollection.fromJson(geojsonData).features()) {
 			noFlyZones.add((Polygon) feature.geometry());
 		}	
 		return noFlyZones;
 	}
 	
-	// TODO: Use arrays where possible instead of lists
-	public List<Sensor> getSensorData(String day, String month, String year) throws IOException {
-		var page = getPageAsString(serverURL + String.format("/maps/%s/%s/%s/air-quality-data.json", year, month, day));
+	public List<Sensor> getSensorData(String day, String month, String year) throws UnexpectedHTTPResponseException {
+		var sensorJson = getResourceAsString(String.format("%s:%s/maps/%s/%s/%s/air-quality-data.json", serverURL, port, year, month, day));
+		var jsonObjList = new Gson().fromJson(sensorJson, JsonObject[].class);
 		
-		var jsonSensors = new Gson().fromJson(page, JsonObject[].class);
 		var sensors = new ArrayList<Sensor>();
-		
-		for (var j : jsonSensors) {
-			String w3wAddress = j.get("location").getAsString();
-			Point point = getWhat3WordsCoordinates(w3wAddress);
-			double battery = j.get("battery").getAsDouble();
+		for (var jsonObj : jsonObjList) {
+			var w3wAddress = jsonObj.get("location").getAsString();
+			var point = getWhat3WordsCoordinates(w3wAddress);
+			double battery = jsonObj.get("battery").getAsDouble();
 			double reading;
 			try {
-				reading = Double.parseDouble(j.get("reading").getAsString());
-			} catch (NumberFormatException e) {
+				reading = Double.parseDouble(jsonObj.get("reading").getAsString());
+			} catch (NumberFormatException e) {  // Checking for NaN/Null/null etc.
 				reading = -1.0;
 			}
 			sensors.add(new Sensor(point, w3wAddress, battery, reading));
 		}
 		return sensors;
 	}
-	
-	// This broke, that's really bad 
-	// Exception in thread "main" java.net.BindException: Address already in use: connect
-
-	
-	// We're meant to use another thing for web stuff, should change to that
-	
-	private String getPageAsString(String pageUrl) throws IOException {
-		URL url = new URL(pageUrl);
-		Scanner scanner = new Scanner(url.openStream(), "UTF-8");
-		scanner.useDelimiter("\\A");
-		String page = scanner.next();
-		scanner.close();
-		return page;
-	}
-	
-	private Point getWhat3WordsCoordinates(String w3wAddress) throws IOException {
-		String page = getPageAsString(serverURL + String.format("/words/%s/details.json", w3wAddress.replace('.', '/')));
-		var jsonAddress = new Gson().fromJson(page, JsonObject.class);
-		var coords = jsonAddress.getAsJsonObject("coordinates");
+		
+	private Point getWhat3WordsCoordinates(String w3wAddress) throws UnexpectedHTTPResponseException {
+		String w3wData = getResourceAsString(String.format("%s:%s/words/%s/details.json", serverURL, port, w3wAddress.replace('.', '/')));
+		var jsonObj = new Gson().fromJson(w3wData, JsonObject.class);
+		var coords = jsonObj.getAsJsonObject("coordinates");
 		return Point.fromLngLat(
 				coords.get("lng").getAsDouble(),
 				coords.get("lat").getAsDouble());
 	}
 	
+	private String getResourceAsString(String pageUrl) throws UnexpectedHTTPResponseException {
+		var request = HttpRequest.newBuilder().uri(URI.create(pageUrl)).build();
+		HttpResponse<String> response = null;
+		
+		int attempts = 0;
+		boolean fulfilled = false;
+		while (!fulfilled) {
+			try {
+				attempts += 1;
+				response = client.send(request, BodyHandlers.ofString());
+				fulfilled = true;
+			} catch (ConnectException e1) {
+				System.out.println(String.format("Fatal error: Unable to connect to %s at port %s.", serverURL, port));
+				System.exit(1);
+			} catch (InterruptedException | IOException e) {
+				if (attempts == MAX_HTTP_REQUEST_ATTEMPTS) {
+					System.out.println("Fatal error: Exceeded maximum number of request attempts.");
+					System.exit(1);
+				} else {
+					System.out.println(String.format("Request failed. Retrying (%s/%s).", attempts, MAX_HTTP_REQUEST_ATTEMPTS));
+				}
+			}
+		}
+		if (response.statusCode() == 200) {
+			return response.body();
+		} else {
+			throw new UnexpectedHTTPResponseException("Did not receive HTTP status code 200 (OK). Perhaps your filename is incorrect?");
+		}
+	}
 }

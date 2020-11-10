@@ -87,20 +87,24 @@ public class FlightPlanner {
 		var endP = path.get(end).getPoint();
 		var afterEndP = path.get(end + 1).getPoint();
 		
-		double penalty = 0.0000;
+		double penalty = 0;
 		
 		
 		double lengthBefore = distanceBetween(beforeStartP, startP) + distanceBetween(endP, afterEndP);
 		double lengthAfter = distanceBetween(beforeStartP, endP) + distanceBetween(startP, afterEndP);
 		
-		lengthBefore += (noFlyZoneChecker.isMoveLegal(beforeStartP, startP) ? 0 : penalty) + (noFlyZoneChecker.isMoveLegal(endP, afterEndP) ? 0 : penalty);
-		lengthAfter+= (noFlyZoneChecker.isMoveLegal(beforeStartP, endP) ? 0 : penalty) + (noFlyZoneChecker.isMoveLegal(startP, afterEndP) ? 0 : penalty);
+//		lengthBefore += (noFlyZoneChecker.isMoveLegal(beforeStartP, startP) ? 0 : penalty) + (noFlyZoneChecker.isMoveLegal(endP, afterEndP) ? 0 : penalty);
+//		lengthAfter += (noFlyZoneChecker.isMoveLegal(beforeStartP, endP) ? 0 : penalty) + (noFlyZoneChecker.isMoveLegal(startP, afterEndP) ? 0 : penalty);
 		
 		return lengthAfter - lengthBefore;
 	}
 	
-	// no penalty - 
-	
+	// no penalty - 88.58002735978113
+	// 0.0003 penalty - 88.5827633378933
+	// 0.001 penalty - 88.48974008207934
+	// 0.002 penalty - 89.47332421340629
+	// 0.003 penalty - 90.69904240766074
+	// 0.0006 penalty - 88.20519835841313
 //	for (int p = 0; p < newPath.size() - 1; p++) {
 //	if (noFlyZoneChecker.isMoveLegal(newPath.get(p).getPoint(), newPath.get(p+1).getPoint())) {
 //		dist += 0.0006;
@@ -113,14 +117,6 @@ public class FlightPlanner {
 			output.set(i, path.get(e-(i-s)));
 		}
 		return output;
-	}
-	
-	private double pathLength(List<Waypoint> route) {
-		double length = 0;
-		for (int i = 0; i < route.size() - 1; i++) {
-			length += distanceBetween(route.get(i).getPoint(), route.get(i+1).getPoint());
-		}
-		return length;
 	}
 	
 	private static Sensor closestSensor(Point point, List<Sensor> sensors) {

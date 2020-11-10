@@ -33,9 +33,24 @@ public class App {
     	
     	var startPoint = Point.fromLngLat(startLng, startLat);
     	
-    	var webserver = new Webserver("http://localhost:" + port);
+    	System.out.println("penis");
+    	
+    	var webserver = Webserver.getInstance();
+    	webserver.configure("http://localhost", port);
+    	
 //    	var sensors = webserver.getSensorData(day, month, year);
-    	var nfzs = webserver.getNoFlyZones();
+    	
+    	
+    	List<Polygon> nfzs = null;
+    	
+    	try {
+    		nfzs = webserver.getNoFlyZones();
+    	} catch (UnexpectedHTTPResponseException e) {
+    		System.out.println("shit");
+    		System.exit(1);
+    	}
+    	
+    	System.out.println("hello");
     	
     	fly(webserver, nfzs, startPoint);
     	
@@ -83,9 +98,10 @@ public class App {
 					
 					try {
 						sensors = web.getSensorData(String.format("%02d", d), String.format("%02d", m), Integer.toString(y));
-					} catch (FileNotFoundException e) {
+					} catch (UnexpectedHTTPResponseException e) {
 						continue;
 					}
+					
 					
 					List<Feature> features = new ArrayList<>();
 					for (var s : sensors) {
@@ -122,7 +138,7 @@ public class App {
 			    	
 			    	System.out.println(count);
 			    	avg += drone.getTimesMoved();
-			    	TimeUnit.MILLISECONDS.sleep(10);
+//			    	TimeUnit.MILLISECONDS.sleep(10);
 //			    	System.in.read();
 			    	
 				}
