@@ -75,9 +75,9 @@ public class App {
     	
     	double count = 0;
     	double avg = 0;
-	    for (int y = 2020; y <= 2020; y++) {
-			for (int m = 1; m <= 1; m++) {
-				for (int d = 2; d <= 2; d++) {
+	    for (int y = 2020; y <= 2021; y++) {
+			for (int m = 1; m <= 12; m++) {
+				for (int d = 1; d <= 31; d++) {
 					
 					List<Sensor> sensors;
 					
@@ -105,9 +105,7 @@ public class App {
 			    	var route = new FlightPlanner(sensors, noFlyZoneChecker).twoOptPath(startPoint);
 			    	
 			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Sensor::getPoint).collect(Collectors.toList()))));
-			    	
-			    	System.out.println(FeatureCollection.fromFeatures(features).toJson());
-			    	
+			    				    	
 			    	boolean arrived = pilot.followRoute(route);
 
 			    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs).generateMap();

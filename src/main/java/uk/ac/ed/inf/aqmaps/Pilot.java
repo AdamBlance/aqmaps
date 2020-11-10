@@ -250,6 +250,8 @@ public class Pilot {
 		Point clockwisePosition = dronePos;
 		Point antiClockwisePosition = dronePos;
 		
+		
+		
 		while (true) {
 			
 			if (clockwiseDist < antiClockwiseDist) {
@@ -262,7 +264,7 @@ public class Pilot {
 					clockwiseDist = clockwiseLength*0.0003 + distanceBetween(clockwisePosition, target);
 					
 					nearest = nearestBearing(clockwisePosition, target);
-					if (testMove(clockwisePosition, nearest).isPresent()) {
+					if (testMove(clockwisePosition, nearest).isPresent() && nearest != mod360(clockwiseDirections.get(clockwiseDirections.size() - 1) - 180)) {
 						precomputedBearings.addAll(clockwiseDirections);
 						return precomputedBearings.poll();
 					}
@@ -281,7 +283,7 @@ public class Pilot {
 					antiClockwiseDist = antiClockwiseLength*0.0003 + distanceBetween(antiClockwisePosition, target);
 					
 					nearest = nearestBearing(antiClockwisePosition, target);
-					if (testMove(antiClockwisePosition, nearest).isPresent()) {
+					if (testMove(antiClockwisePosition, nearest).isPresent() && nearest != mod360(antiClockwiseDirections.get(antiClockwiseDirections.size() - 1) - 180)) {
 						precomputedBearings.addAll(antiClockwiseDirections);
 						return precomputedBearings.poll();
 					}
@@ -307,8 +309,10 @@ public class Pilot {
 		
 
 		
-		
-		
+//	// We need to return
+//	private BuildingPath pathAroundBuilding(boolean clockwise) {
+//		arstoienarstoienarstoienarstoienoyunoyuoyunoyunnuyoun
+//	}
 	
 	
 	// Will return empty if nothing is found which is very unlikely
