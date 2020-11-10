@@ -14,6 +14,7 @@ public class PointUtils {
 		return Math.sqrt(Math.pow(a.longitude() - b.longitude(), 2) + Math.pow(a.latitude() - b.latitude(), 2));
 	}
 	
+	// TODO: Look into this breaking when the origin and destination are the same
 	// Get the bearing you take to go from origin to destination rounded to nearest 10
 	public static int nearestBearing(Point origin, Point destination) {	
 		double latDist = destination.latitude() - origin.latitude();

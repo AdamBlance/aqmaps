@@ -75,9 +75,9 @@ public class App {
     	
     	double count = 0;
     	double avg = 0;
-	    for (int y = 2020; y <= 2021; y++) {
-			for (int m = 1; m <= 12; m++) {
-				for (int d = 1; d <= 31; d++) {
+	    for (int y = 2020; y <= 2020; y++) {
+			for (int m = 1; m <= 1; m++) {
+				for (int d = 2; d <= 2; d++) {
 					
 					List<Sensor> sensors;
 					
@@ -122,10 +122,10 @@ public class App {
 			    	
 			    	System.out.println(gjg);
 			    	
-			    	System.out.println(count);
+//			    	System.out.println(count);
 			    	avg += drone.getTimesMoved();
 			    	TimeUnit.MILLISECONDS.sleep(10);
-			    	System.in.read();
+//			    	System.in.read();
 			    	
 				}
 			}

@@ -59,6 +59,8 @@ public class Drone {
 	
 	public boolean move(int bearing) {
 		
+		System.out.println(bearing);
+		
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
 		
 		if (nfzc.isMoveLegal(position, destination) && !outOfMoves()) {

@@ -3,6 +3,7 @@ package uk.ac.ed.inf.aqmaps;
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
 import static uk.ac.ed.inf.aqmaps.PointUtils.nearestBearing;
+import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,9 +21,6 @@ import java.util.Stack;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
-import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
-import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
-
 
 
 public class Pilot {
@@ -36,7 +34,7 @@ public class Pilot {
 	private int lastBearingTaken;  // This might break if the first move hits a wall
 	private Point previousPosition;
 	
-	private Stack<Integer> precomputedBearings = new Stack<>();
+	private Queue<Integer> precomputedBearings = new LinkedList<>();
 	
 	private HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
 	
@@ -87,7 +85,7 @@ public class Pilot {
 			previousPosition = drone.getPosition();
 			
 			var targetPoint = waypoint.getPoint();
-			
+						
 			int bearing = bestLegalBearing(targetPoint);
 			
 			var move = drone.move(bearing);
@@ -149,74 +147,185 @@ public class Pilot {
 	
 	// This should precompute the path to the next waypoint and store it
 	// Then this should return what's in that if it's not empty
+	
+	// We need to make sure that this only runs when it needs to
+	// That means that when we finally stop running into walls we should stop the search
+	
+//	private int bestLegalBearing(Point target) {
+//				
+//		if (!precomputedBearings.isEmpty()) {
+//			return precomputedBearings.pop();
+//		}
+//		
+//		var dronePos = drone.getPosition();
+//		
+//		var near = nearestBearing(dronePos, target);
+//		
+//		if (testMove(dronePos, near).isPresent()) {
+//			return near;
+//		}
+//		
+//		var euclidToTarget = new HashMap<Point, Double>();
+//		euclidToTarget.put(dronePos, distanceBetween(dronePos, target));
+//		
+//		var distanceFromStartToNode = new HashMap<Point, Double>();
+//		distanceFromStartToNode.put(dronePos, 0.0);
+//		
+//		var previousNode = new HashMap<Point, Point>();
+//		
+//		Comparator<Point> comp = (Point a, Point b) -> Double.compare(
+//				distanceFromStartToNode.get(a) + euclidToTarget.get(a),
+//				distanceFromStartToNode.get(b) + euclidToTarget.get(b));
+//		var priorityQueue = new PriorityQueue<Point>(comp);
+//		priorityQueue.add(dronePos);
+//		
+//		// I don't  think this is what's breaking it but we need to move once. 
+//		// Basically first time it's called we can't do the distance check. 
+//		int count = 0;
+//		while (!priorityQueue.isEmpty()) {
+//			var node = priorityQueue.poll();
+//			
+////			System.out.println(priorityQueue.size());
+//			
+//			// || testMove(node, nearestBearing(node, target)).isPresent()
+//			
+//			if (count > 0) {
+//				if (distanceBetween(node, target) < 0.0002 ) {
+//					
+//					while (node != dronePos) {
+//						
+//						var prev = previousNode.get(node);
+//						
+//						
+//						precomputedBearings.push(nearestBearing(prev, node));
+//						node = prev;
+//					}
+//					
+//					// Will break here if we start in the target
+//					return precomputedBearings.pop();
+//				}
+//			}
+//			
+//			count += 1;
+//			
+//			for (int bear = 0; bear <= 350; bear += 10) {
+//				var moveOpt = testMove(node, bear);
+//				if (moveOpt.isPresent()) {
+//					var move = moveOpt.get();
+//					euclidToTarget.put(move, distanceBetween(move, target));
+//					distanceFromStartToNode.put(move, distanceFromStartToNode.get(node) + 0.0003);
+//					previousNode.put(move, node);
+//					priorityQueue.add(move);
+//				}
+//			}
+//		}
+//		// If we don't find anything, this will break things.
+//		return -1;
+//	}
+	
 	private int bestLegalBearing(Point target) {
-				
+		
 		if (!precomputedBearings.isEmpty()) {
-			return precomputedBearings.pop();
+			return precomputedBearings.poll();
 		}
 		
+		int nearestBearing = nearestBearing(drone.getPosition(), target);
 		var dronePos = drone.getPosition();
 		
-		var near = nearestBearing(dronePos, target);
-		
-		if (testMove(dronePos, near).isPresent()) {
-			return near;
+		if (testMove(dronePos, nearestBearing).isPresent()) {
+			return nearestBearing;
 		}
 		
-		var euclidToTarget = new HashMap<Point, Double>();
-		euclidToTarget.put(dronePos, distanceBetween(dronePos, target));
+		// Distance around the building going clockwise/anticlockwise
 		
-		var distanceFromStartToNode = new HashMap<Point, Double>();
-		distanceFromStartToNode.put(dronePos, 0.0);
+		List<Integer> clockwiseDirections = new ArrayList<>();
+		List<Integer> antiClockwiseDirections = new ArrayList<>();
 		
-		var previousNode = new HashMap<Point, Point>();
+		double clockwiseDist = 0;
+		double antiClockwiseDist = 0;
 		
-		Comparator<Point> comp = (Point a, Point b) -> Double.compare(
-				distanceFromStartToNode.get(a) + euclidToTarget.get(a),
-				distanceFromStartToNode.get(b) + euclidToTarget.get(b));
-		var priorityQueue = new PriorityQueue<Point>(comp);
-		priorityQueue.add(dronePos);
+		int clockwiseLength = 0;
+		int antiClockwiseLength = 0;
 		
-		// I don't  think this is what's breaking it but we need to move once. 
-		// Basically first time it's called we can't do the distance check. 
-		int count = 0;
-		while (!priorityQueue.isEmpty()) {
-			var node = priorityQueue.poll();
+		Point clockwisePosition = dronePos;
+		Point antiClockwisePosition = dronePos;
+		
+		while (true) {
 			
-			System.out.println(priorityQueue.size());
-			
-			if (count > 0) {
-				if (distanceBetween(node, target) < 0.0002) {
+			if (clockwiseDist < antiClockwiseDist) {
+				int nearest = nearestBearing(clockwisePosition, target);
+				var newBearing = bearingScan(clockwisePosition, nearest, -10);
+				if (newBearing.isPresent()) {
+					clockwisePosition = testMove(clockwisePosition, newBearing.get()).get();
+					clockwiseDirections.add(newBearing.get());
+					clockwiseLength += 1;
+					clockwiseDist = clockwiseLength*0.0003 + distanceBetween(clockwisePosition, target);
 					
-					while (node != dronePos) {
-						
-						var prev = previousNode.get(node);
-						
-						
-						precomputedBearings.push(nearestBearing(prev, node));
-						node = prev;
+					nearest = nearestBearing(clockwisePosition, target);
+					if (testMove(clockwisePosition, nearest).isPresent()) {
+						precomputedBearings.addAll(clockwiseDirections);
+						return precomputedBearings.poll();
 					}
 					
-					// Will break here if we start in the target
-					return precomputedBearings.pop();
+					
+				} else {
+					throw new RuntimeException("got stuck going clockwise around building");
+				}
+			} else {
+				int nearest = nearestBearing(antiClockwisePosition, target);
+				var newBearing = bearingScan(antiClockwisePosition, nearest, 10);
+				if (newBearing.isPresent()) {
+					antiClockwisePosition = testMove(antiClockwisePosition, newBearing.get()).get();
+					antiClockwiseDirections.add(newBearing.get());
+					antiClockwiseLength += 1;
+					antiClockwiseDist = antiClockwiseLength*0.0003 + distanceBetween(antiClockwisePosition, target);
+					
+					nearest = nearestBearing(antiClockwisePosition, target);
+					if (testMove(antiClockwisePosition, nearest).isPresent()) {
+						precomputedBearings.addAll(antiClockwiseDirections);
+						return precomputedBearings.poll();
+					}
+					
+				} else {
+					throw new RuntimeException("got stuck going anticlockwise around building");
 				}
 			}
 			
-			count += 1;
+			// Each loop, we update one path
+
 			
-			for (int bear = 0; bear <= 350; bear += 10) {
-				var moveOpt = testMove(node, bear);
-				if (moveOpt.isPresent()) {
-					var move = moveOpt.get();
-					euclidToTarget.put(move, distanceBetween(move, target));
-					distanceFromStartToNode.put(move, distanceFromStartToNode.get(node) + 0.0003);
-					previousNode.put(move, node);
-					priorityQueue.add(move);
-				}
-			}
+		
 		}
-		// If we don't find anything, this will break things.
-		return -1;
+		
+	}
+		
+
+
+		
+
+		
+		
+
+		
+		
+		
+	
+	
+	// Will return empty if nothing is found which is very unlikely
+	private Optional<Integer> bearingScan(Point position, int startBearing, int offset) {
+		
+		Optional<Integer> newBearing = Optional.empty();
+		
+		int bearing = mod360(startBearing + offset);
+		while (bearing != startBearing) {
+			 if (testMove(position, bearing).isPresent()) {
+				 newBearing = Optional.of(bearing);
+				 break;
+			 }
+			 bearing = mod360(bearing + offset);
+		}
+		return newBearing;
+		
 	}
 	
 //	private int bestLegalBearing(Point target) {
