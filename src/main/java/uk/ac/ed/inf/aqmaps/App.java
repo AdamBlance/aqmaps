@@ -104,7 +104,7 @@ public class App {
 			    	
 			    	var route = new FlightPlanner(sensors, noFlyZoneChecker).twoOptPath(startPoint);
 			    	
-			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Sensor::getPoint).collect(Collectors.toList()))));
+//			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Waypoint::getPoint).collect(Collectors.toList()))));
 			    				    	
 			    	boolean arrived = pilot.followRoute(route);
 
@@ -115,12 +115,12 @@ public class App {
 			    		System.out.println("AHHHHH");
 			    	}
 			    	
-			    	System.out.println(drone.getTimesMoved());
+//			    	System.out.println(drone.getTimesMoved());
 
 			    	
-			    	System.out.println(gjg);
+//			    	System.out.println(gjg);
 			    	
-//			    	System.out.println(count);
+			    	System.out.println(count);
 			    	avg += drone.getTimesMoved();
 			    	TimeUnit.MILLISECONDS.sleep(10);
 //			    	System.in.read();

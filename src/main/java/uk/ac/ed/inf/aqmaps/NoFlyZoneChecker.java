@@ -21,6 +21,8 @@ public class NoFlyZoneChecker {
 	// Doesn't work in 2D so just use first two axes
 	// Points represent vectors instead
 	
+	// TODO: do some bounding box check or something to make this faster. 
+	
 	public boolean isMoveLegal(Point origin, Point destination) {
 		// can figure out if this is hardcoded or what later
 		var lng = destination.longitude();

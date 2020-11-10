@@ -55,15 +55,15 @@ public class Pilot {
 	}
 	
 	// TODO: Write common terminology somewhere and standardise it
-	public boolean followRoute(List<Sensor> route) {
+	public boolean followRoute(List<Waypoint> route) {
 		var start = new Waypoint(drone.getPosition());
 		lastBearingTaken = nearestBearing(drone.getPosition(), route.get(0).getPoint());
-		for (Sensor s : route) {
+		for (Waypoint s : route) {
 			boolean arrived = navigateTowards(s);
 			if (!arrived) {
 				return false;
 			}
-			var reading = drone.readSensor(s);
+			var reading = drone.readSensor((Sensor) s);
 			var report = sensorReports.get(s);
 			if (reading.isPresent()) {
 				report.setValid(true);

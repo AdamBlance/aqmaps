@@ -21,7 +21,8 @@ public class FlightPlanner {
 	// This should take in the start point, sensor points and try to devise a good path
 	
 	private NoFlyZoneChecker noFlyZoneChecker;
-	private List<Sensor> sensors;	
+	private List<Sensor> sensors;
+
 	
 	public FlightPlanner(List<Sensor> sensors, NoFlyZoneChecker noFlyZoneChecker) {
 		this.noFlyZoneChecker = noFlyZoneChecker;
@@ -45,33 +46,68 @@ public class FlightPlanner {
 		return dronePath;
 	}
 	
-	public List<Sensor> twoOptPath(Point start) {
-		var path = greedyPath(start);
+	public List<Waypoint> twoOptPath(Point start) {
+		List<Waypoint> path = new ArrayList<>();
+		
+		var startWaypoint = new Waypoint(start);
+		path.add(startWaypoint);
+		path.addAll(greedyPath(start));
+		path.add(startWaypoint);
 		
 		// Go through every possible subpath in the path and reverse it if its shorter
 		
-		boolean improved = true;
-		double bestLength = pathLength(start, path);
+		boolean improved = true;		
 		while (improved) {
 			improved = false;
 			outerloop:
-			for (int i = 0; i < path.size(); i++) {
-				for (int j = i+1; j < path.size(); j++) {
-					var newPath = modifiedPath(path, i, j);
-					double dist = pathLength(start, newPath);
-					if (dist < bestLength) {
-						improved = true;
-						bestLength = dist;
-						path = newPath;
+			for (int i = 1; i < path.size() - 1; i++) {
+				for (int j = i+1; j < path.size() - 1; j++) {
+					double diff = pathDifference(path, i, j);
+					if (diff < 0) {
+						path = modifiedPath(path, i, j);
+						improved = true;					
 						break outerloop;
 					}
 				}
 			}
 		}
-		return path;
+		return path.subList(1, path.size() - 1);
 	}
 	
-	private List<Sensor> modifiedPath(List<Sensor> path, int s, int e) {
+	// inclusive
+	private double pathDifference(List<Waypoint> path, int start, int end) {
+		
+		if (start <= 0 || end >= path.size() - 1) {
+			throw new RuntimeException("Can't change the start or end point");
+		}
+		
+		var beforeStartP = path.get(start - 1).getPoint();
+		var startP = path.get(start).getPoint();
+		
+		var endP = path.get(end).getPoint();
+		var afterEndP = path.get(end + 1).getPoint();
+		
+		double penalty = 0.0000;
+		
+		
+		double lengthBefore = distanceBetween(beforeStartP, startP) + distanceBetween(endP, afterEndP);
+		double lengthAfter = distanceBetween(beforeStartP, endP) + distanceBetween(startP, afterEndP);
+		
+		lengthBefore += (noFlyZoneChecker.isMoveLegal(beforeStartP, startP) ? 0 : penalty) + (noFlyZoneChecker.isMoveLegal(endP, afterEndP) ? 0 : penalty);
+		lengthAfter+= (noFlyZoneChecker.isMoveLegal(beforeStartP, endP) ? 0 : penalty) + (noFlyZoneChecker.isMoveLegal(startP, afterEndP) ? 0 : penalty);
+		
+		return lengthAfter - lengthBefore;
+	}
+	
+	// no penalty - 
+	
+//	for (int p = 0; p < newPath.size() - 1; p++) {
+//	if (noFlyZoneChecker.isMoveLegal(newPath.get(p).getPoint(), newPath.get(p+1).getPoint())) {
+//		dist += 0.0006;
+//	}
+//}
+	
+	private List<Waypoint> modifiedPath(List<Waypoint> path, int s, int e) {
 		var output = new ArrayList<>(path);
 		for (int i = s; i <= e; i++) {
 			output.set(i, path.get(e-(i-s)));
@@ -79,12 +115,11 @@ public class FlightPlanner {
 		return output;
 	}
 	
-	private double pathLength(Point start, List<Sensor> route) {
-		double length = distanceBetween(start, route.get(0).getPoint());
+	private double pathLength(List<Waypoint> route) {
+		double length = 0;
 		for (int i = 0; i < route.size() - 1; i++) {
 			length += distanceBetween(route.get(i).getPoint(), route.get(i+1).getPoint());
 		}
-		length += distanceBetween(route.get(route.size() - 1).getPoint(), start);
 		return length;
 	}
 	
