@@ -104,9 +104,9 @@ public class App {
     	
     	double count = 0;
     	double avg = 0;
-	    for (int y = 2020; y <= 2020; y++) {
-			for (int m = 2; m <= 2; m++) {
-				for (int d = 19; d <= 19; d++) {
+	    for (int y = 2020; y <= 2021; y++) {
+			for (int m = 1; m <= 12; m++) {
+				for (int d = 1; d <= 31; d++) {
 					
 					List<Sensor> sensors;
 					
@@ -133,9 +133,14 @@ public class App {
 			    	}
 					
 					
-//			    	startPoint = Point.fromLngLat(-3.188613902367063, 55.94298190554946);
+			    	startPoint = Point.fromLngLat(-3.188613902367063, 55.94298190554946);
 			    	startPoint = Point.fromLngLat(-3.1900330714830343, 55.94428188653317);
+			    	startPoint = Point.fromLngLat(-3.190883027742702, 55.946091804161746);
+			    	startPoint = Point.fromLngLat(-3.1850482878705586, 55.94600155706771);
+			    	startPoint = Point.fromLngLat(-3.1866978391282847, 55.944058236553516);
+			    	startPoint = Point.fromLngLat(-3.1895788643733054, 55.946092672971474);
 			    	
+			    	// All fine!
 					
 					List<Feature> features = new ArrayList<>();
 					for (var s : sensors) {
@@ -178,7 +183,7 @@ public class App {
 			    	
 			    	
 			    	System.out.println(count);
-			    	System.out.println(FeatureCollection.fromFeatures(features).toJson());
+//			    	System.out.println(FeatureCollection.fromFeatures(features).toJson());
 			    	avg += drone.getTimesMoved();
 //			    	TimeUnit.MILLISECONDS.sleep(10);
 //			    	System.in.read();
