@@ -151,7 +151,9 @@ public class App {
 					
 					count += 1;
 					
-					var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
+//					if (lng <= -3.192473 || lng >= -3.184319 || lat <= 55.942617 || lat >= 55.946233) {
+					
+					var noFlyZoneChecker = new NoFlyZoneChecker(nfzs, Point.fromLngLat(-3.192473, 55.946233), Point.fromLngLat(-3.184319, 55.942617));
 					
 					var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
 					
