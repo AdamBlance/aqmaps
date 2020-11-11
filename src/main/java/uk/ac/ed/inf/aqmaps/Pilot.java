@@ -78,6 +78,8 @@ public class Pilot {
 		boolean arrived = false;
 		while (!arrived) {
 			
+			int breakp = path.size();
+			
 			if (drone.outOfMoves()) {
 				break;
 			}
@@ -99,7 +101,12 @@ public class Pilot {
 			lastBearingTaken = bearing;
 			
 			String w3wLocation = null;
-			if (distanceBetween(drone.getPosition(), targetPoint) <= drone.SENSOR_READ_DISTANCE) {
+			
+			var temp = distanceBetween(drone.getPosition(), targetPoint); 
+			
+//			System.out.println(temp);
+			
+			if (temp <= drone.SENSOR_READ_DISTANCE) {
 				if (waypoint instanceof Sensor) {
 					w3wLocation = ((Sensor) waypoint).getW3wAddress();
 				}
@@ -115,6 +122,9 @@ public class Pilot {
 					pos.longitude(),
 					pos.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
+			
+//			System.out.println(LineString.fromLngLats(path).toJson());
+			
 		}
 		return arrived;
 	}
@@ -252,11 +262,11 @@ public class Pilot {
 		
 		
 		
-		while (true) {
+		while (clockwiseDist < Double.MAX_VALUE || antiClockwiseDist < Double.MAX_VALUE) {
 			
 			if (clockwiseDist < antiClockwiseDist) {
 				int nearest = nearestBearing(clockwisePosition, target);
-				var newBearing = bearingScan(clockwisePosition, nearest, -10);
+				var newBearing = bearingScan(clockwisePosition, nearest, -10, clockwiseDirections.isEmpty() ? nearest : mod360(clockwiseDirections.get(clockwiseDirections.size()-1) - 180));
 				if (newBearing.isPresent()) {
 					clockwisePosition = testMove(clockwisePosition, newBearing.get()).get();
 					clockwiseDirections.add(newBearing.get());
@@ -264,18 +274,28 @@ public class Pilot {
 					clockwiseDist = clockwiseLength*0.0003 + distanceBetween(clockwisePosition, target);
 					
 					nearest = nearestBearing(clockwisePosition, target);
-					if (testMove(clockwisePosition, nearest).isPresent() && nearest != mod360(clockwiseDirections.get(clockwiseDirections.size() - 1) - 180)) {
+
+					
+					boolean tMove = testMove(clockwisePosition, nearest).isPresent();
+					int backtrack = mod360(clockwiseDirections.get(clockwiseDirections.size() - 1) - 180);
+					
+//					System.out.println(nearest);
+//					System.out.println(tMove);
+//					System.out.println(backtrack);
+					
+					if ((tMove && (nearest != backtrack)) || distanceBetween(clockwisePosition, target) < 0.0002) {
 						precomputedBearings.addAll(clockwiseDirections);
 						return precomputedBearings.poll();
 					}
 					
 					
 				} else {
-					throw new RuntimeException("got stuck going clockwise around building");
+					clockwiseDist = Double.MAX_VALUE;
+					continue;
 				}
 			} else {
 				int nearest = nearestBearing(antiClockwisePosition, target);
-				var newBearing = bearingScan(antiClockwisePosition, nearest, 10);
+				var newBearing = bearingScan(antiClockwisePosition, nearest, 10, antiClockwiseDirections.isEmpty() ? nearest : mod360(antiClockwiseDirections.get(antiClockwiseDirections.size()-1) - 180));
 				if (newBearing.isPresent()) {
 					antiClockwisePosition = testMove(antiClockwisePosition, newBearing.get()).get();
 					antiClockwiseDirections.add(newBearing.get());
@@ -283,22 +303,23 @@ public class Pilot {
 					antiClockwiseDist = antiClockwiseLength*0.0003 + distanceBetween(antiClockwisePosition, target);
 					
 					nearest = nearestBearing(antiClockwisePosition, target);
-					if (testMove(antiClockwisePosition, nearest).isPresent() && nearest != mod360(antiClockwiseDirections.get(antiClockwiseDirections.size() - 1) - 180)) {
+					
+					
+					// End if there is a straight shot to the waypoint and the straight shot doesn't put us in the space we were just in
+					// We know the space we were just in did not give us a straight shot
+					// Also, 
+					if ((testMove(antiClockwisePosition, nearest).isPresent() && nearest != mod360(antiClockwiseDirections.get(antiClockwiseDirections.size() - 1) - 180)) || distanceBetween(antiClockwisePosition, target) < 0.0002) {
 						precomputedBearings.addAll(antiClockwiseDirections);
 						return precomputedBearings.poll();
 					}
 					
 				} else {
-					throw new RuntimeException("got stuck going anticlockwise around building");
+					antiClockwiseDist = Double.MAX_VALUE;
+					continue;
 				}
 			}
-			
-			// Each loop, we update one path
-
-			
-		
 		}
-		
+		throw new IllegalStateException("The drone cannot escape and is stuck for eternity :(");
 	}
 		
 
@@ -316,12 +337,12 @@ public class Pilot {
 	
 	
 	// Will return empty if nothing is found which is very unlikely
-	private Optional<Integer> bearingScan(Point position, int startBearing, int offset) {
+	private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {
 		
 		Optional<Integer> newBearing = Optional.empty();
 		
 		int bearing = mod360(startBearing + offset);
-		while (bearing != startBearing) {
+		while (bearing != limitBearing) {
 			 if (testMove(position, bearing).isPresent()) {
 				 newBearing = Optional.of(bearing);
 				 break;

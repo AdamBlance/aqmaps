@@ -1,16 +1,9 @@
 package uk.ac.ed.inf.aqmaps;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.lang.Math;
 
-import com.mapbox.geojson.Feature;
-import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
-import com.mapbox.geojson.Polygon;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 

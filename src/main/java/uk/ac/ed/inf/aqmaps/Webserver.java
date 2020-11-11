@@ -91,11 +91,11 @@ public class Webserver {
 				response = client.send(request, BodyHandlers.ofString());
 				fulfilled = true;
 			} catch (ConnectException e1) {
-				System.out.println(String.format("Fatal error: Unable to connect to %s at port %s.", serverURL, port));
+				System.out.println(String.format("Fatal error: Unable to connect to %s at port %s. Exiting...", serverURL, port));
 				System.exit(1);
 			} catch (InterruptedException | IOException e) {
 				if (attempts == MAX_HTTP_REQUEST_ATTEMPTS) {
-					System.out.println("Fatal error: Exceeded maximum number of request attempts.");
+					System.out.println("Fatal error: Exceeded maximum number of request attempts. Exiting...");
 					System.exit(1);
 				} else {
 					System.out.println(String.format("Request failed. Retrying (%s/%s).", attempts, MAX_HTTP_REQUEST_ATTEMPTS));
