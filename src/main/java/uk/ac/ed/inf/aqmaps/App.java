@@ -17,6 +17,7 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
+import com.mapbox.geojson.BoundingBox;
 import com.mapbox.turf.TurfJoins;
 
 
@@ -151,9 +152,10 @@ public class App {
 					
 					count += 1;
 					
-//					if (lng <= -3.192473 || lng >= -3.184319 || lat <= 55.942617 || lat >= 55.946233) {
 					
-					var noFlyZoneChecker = new NoFlyZoneChecker(nfzs, Point.fromLngLat(-3.192473, 55.946233), Point.fromLngLat(-3.184319, 55.942617));
+					var noFlyZoneChecker = new NoFlyZoneChecker(
+							nfzs,
+							BoundingBox.fromLngLats(-3.192473, 55.942617, -3.184319, 55.946233));							
 					
 					var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
 					
@@ -168,7 +170,7 @@ public class App {
 			    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs).generateMap();
 			    	
 
-			    	if (drone.getTimesMoved() >= 140) {
+			    	if (drone.getTimesMoved() >= 150) {
 			    		System.out.println("AHHHHH");
 			    		System.out.println(count);
 			    		System.out.println(gjg);
