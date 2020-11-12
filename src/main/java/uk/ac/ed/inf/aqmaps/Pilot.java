@@ -6,6 +6,8 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -127,6 +129,8 @@ public class Pilot {
 		int branchMoveCount = 0;
 		Point branchHead;
 		
+		boolean stuck = false;
+		
 		Point target;
 		
 		double moveDist;
@@ -139,9 +143,10 @@ public class Pilot {
 			this.branchHead = startPoint;
 			this.moveDist = moveDist;
 			step = clockwise ? -10 : 10;
+			this.target = target;
 		}
 		
-		public void explore() {
+		public boolean explore() {
 			
 			int mostDirectBearing = mostDirectBearing(branchHead, target);
 			
@@ -164,7 +169,9 @@ public class Pilot {
 				// Now, have we arrived at our destination, or found a clear direct path to the target?
 			} else {
 				branchDist = Double.MAX_VALUE;
+				stuck = true;
 			}
+			return endingCheck();
 			
 		}
 		
@@ -187,13 +194,23 @@ public class Pilot {
 			return branchDirections.get(branchDirections.size() - 1);
 		}
 		
-		public double getBranchDist() {
+		public double getHeuristic() {
 			return branchDist;
 		}
 		
 		public List<Integer> getBranchDirections() {
 			return branchDirections;
 		}
+		
+		public boolean isStuck() {
+			return stuck;
+		}
+
+//		@Override
+//		public int compareTo(searchBranch arg0) {
+//			return ((Double) getHeuristic()).compareTo(arg0.getHeuristic());
+//		}
+
 		
 	}
 	
@@ -203,75 +220,24 @@ public class Pilot {
 			return precomputedBearings.poll();
 		}
 		
-		int mostDirectBearing = mostDirectBearing(drone.getPosition(), target);
 		var dronePos = drone.getPosition();
+		int mostDirectBearing = mostDirectBearing(dronePos, target);
 		
 		if (testMove(dronePos, mostDirectBearing).isPresent()) {
 			return mostDirectBearing;
 		}
 		
-		// Distance around the building going clockwise/anticlockwise
+		final double MOVE_DISTANCE = drone.getMoveDistance();
 		
-		List<Integer> clockwiseDirections = new ArrayList<>();
-		List<Integer> antiClockwiseDirections = new ArrayList<>();
+		var CWBranch = new searchBranch(dronePos, target, true, MOVE_DISTANCE); // maybe look at the static final field getters? 
+		var ACWBranch = new searchBranch(dronePos, target, false, MOVE_DISTANCE);
 		
-		double clockwiseDist = 0;
-		double antiClockwiseDist = 0;
-		
-		int clockwiseMoveCount = 0;
-		int antiClockwiseMoveCount = 0;
-		
-		Point clockwisePosition = dronePos;
-		Point antiClockwisePosition = dronePos;
-		
-		var moveDist = drone.getMoveDistance();
-		
-		while (clockwiseDist < Double.MAX_VALUE || antiClockwiseDist < Double.MAX_VALUE) {
-			
-			if (clockwiseDist < antiClockwiseDist) {
-				mostDirectBearing = mostDirectBearing(clockwisePosition, target);
-				var newBearing = bearingScan(clockwisePosition, mostDirectBearing, -10, clockwiseDirections.isEmpty() ? mostDirectBearing : mod360(clockwiseDirections.get(clockwiseDirections.size()-1) - 180));
-				if (newBearing.isPresent()) {
-					clockwisePosition = testMove(clockwisePosition, newBearing.get()).get();
-					clockwiseDirections.add(newBearing.get());
-					clockwiseMoveCount += 1;
-					clockwiseDist = clockwiseMoveCount * moveDist + distanceBetween(clockwisePosition, target);
-					
-					mostDirectBearing = mostDirectBearing(clockwisePosition, target);
-
-					boolean tMove = testMove(clockwisePosition, mostDirectBearing).isPresent();
-					int backtrack = mod360(clockwiseDirections.get(clockwiseDirections.size() - 1) - 180);
-					
-					if ((tMove && (mostDirectBearing != backtrack)) || distanceBetween(clockwisePosition, target) < 0.0002) {
-						precomputedBearings.addAll(clockwiseDirections);
-						precomputedBearings.add(mostDirectBearing);
-						return precomputedBearings.poll();
-					}
-				} else {
-					clockwiseDist = Double.MAX_VALUE;
-					continue;
-				}
-			} else {
-				mostDirectBearing = mostDirectBearing(antiClockwisePosition, target);
-				var newBearing = bearingScan(antiClockwisePosition, mostDirectBearing, 10, antiClockwiseDirections.isEmpty() ? mostDirectBearing : mod360(antiClockwiseDirections.get(antiClockwiseDirections.size()-1) - 180));
-				if (newBearing.isPresent()) {
-					antiClockwisePosition = testMove(antiClockwisePosition, newBearing.get()).get();
-					antiClockwiseDirections.add(newBearing.get());
-					antiClockwiseMoveCount += 1;
-					antiClockwiseDist = antiClockwiseMoveCount * moveDist + distanceBetween(antiClockwisePosition, target);
-					
-					mostDirectBearing = mostDirectBearing(antiClockwisePosition, target);
-					
-					if ((testMove(antiClockwisePosition, mostDirectBearing).isPresent() && mostDirectBearing != mod360(antiClockwiseDirections.get(antiClockwiseDirections.size() - 1) - 180)) || distanceBetween(antiClockwisePosition, target) < 0.0002) {
-						precomputedBearings.addAll(antiClockwiseDirections);
-						precomputedBearings.add(mostDirectBearing);						
-						return precomputedBearings.poll();
-					}
-					
-				} else {
-					antiClockwiseDist = Double.MAX_VALUE;
-					continue;
-				}
+		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
+			var shortestBranch = CWBranch.getHeuristic() < ACWBranch.getHeuristic() ? CWBranch : ACWBranch;
+			boolean foundEnd = shortestBranch.explore();
+			if (foundEnd) {
+				precomputedBearings.addAll(shortestBranch.getBranchDirections());
+				return precomputedBearings.poll();
 			}
 		}
 		throw new IllegalStateException("The drone cannot escape and is stuck for eternity :(");
