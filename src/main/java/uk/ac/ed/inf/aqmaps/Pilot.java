@@ -121,6 +121,82 @@ public class Pilot {
 		}
 	}
 	
+	private class searchBranch {
+		
+		double branchDist = 0;
+		int branchMoveCount = 0;
+		Point branchHead;
+		
+		Point target;
+		
+		double moveDist;
+		
+		int step;
+		
+		List<Integer> branchDirections = new ArrayList<>();
+		
+		public searchBranch(Point startPoint, Point target, boolean clockwise, double moveDist) {
+			this.branchHead = startPoint;
+			this.moveDist = moveDist;
+			step = clockwise ? -10 : 10;
+		}
+		
+		public void explore() {
+			
+			int mostDirectBearing = mostDirectBearing(branchHead, target);
+			
+			int backtrack;
+			if (branchDirections.isEmpty()) {
+				backtrack = mostDirectBearing;
+			} else {
+				backtrack = mod360(lastBearing() - 180);
+			}
+			
+			var newBearingOptional = bearingScan(branchHead, mostDirectBearing, step, backtrack);
+			if (newBearingOptional.isPresent()) {
+				var newBearing = newBearingOptional.get();
+				branchHead = testMove(branchHead, newBearing).get();  // This isn't exactly graceful, could equally use getMoveResult
+				branchDirections.add(newBearing);
+				branchMoveCount += 1;
+				branchDist = branchMoveCount * moveDist + distanceBetween(branchHead, target);
+				
+				// We've moved along the side of the building
+				// Now, have we arrived at our destination, or found a clear direct path to the target?
+			} else {
+				branchDist = Double.MAX_VALUE;
+			}
+			
+		}
+		
+		public boolean endingCheck() {
+			if (distanceBetween(branchHead, target) < drone.getSensorReadDistance()) {
+				return true;
+			}
+			int mostDirectBearing = mostDirectBearing(branchHead, target);
+			int backtrackBearing = mod360(lastBearing() - 180);
+			boolean moveIsLegal = testMove(branchHead, mostDirectBearing).isPresent();
+			
+			if (moveIsLegal && (mostDirectBearing != backtrackBearing)) {
+				branchDirections.add(mostDirectBearing);
+				return true;
+			}
+			return false;
+		}
+		
+		private int lastBearing() {
+			return branchDirections.get(branchDirections.size() - 1);
+		}
+		
+		public double getBranchDist() {
+			return branchDist;
+		}
+		
+		public List<Integer> getBranchDirections() {
+			return branchDirections;
+		}
+		
+	}
+	
 	private int bestLegalBearing(Point target) {
 		
 		if (!precomputedBearings.isEmpty()) {
@@ -142,62 +218,53 @@ public class Pilot {
 		double clockwiseDist = 0;
 		double antiClockwiseDist = 0;
 		
-		int clockwiseLength = 0;
-		int antiClockwiseLength = 0;
+		int clockwiseMoveCount = 0;
+		int antiClockwiseMoveCount = 0;
 		
 		Point clockwisePosition = dronePos;
 		Point antiClockwisePosition = dronePos;
 		
-		
+		var moveDist = drone.getMoveDistance();
 		
 		while (clockwiseDist < Double.MAX_VALUE || antiClockwiseDist < Double.MAX_VALUE) {
 			
 			if (clockwiseDist < antiClockwiseDist) {
-				int nearest = mostDirectBearing(clockwisePosition, target);
-				var newBearing = bearingScan(clockwisePosition, nearest, -10, clockwiseDirections.isEmpty() ? nearest : mod360(clockwiseDirections.get(clockwiseDirections.size()-1) - 180));
+				mostDirectBearing = mostDirectBearing(clockwisePosition, target);
+				var newBearing = bearingScan(clockwisePosition, mostDirectBearing, -10, clockwiseDirections.isEmpty() ? mostDirectBearing : mod360(clockwiseDirections.get(clockwiseDirections.size()-1) - 180));
 				if (newBearing.isPresent()) {
 					clockwisePosition = testMove(clockwisePosition, newBearing.get()).get();
 					clockwiseDirections.add(newBearing.get());
-					clockwiseLength += 1;
-					clockwiseDist = clockwiseLength*0.0003 + distanceBetween(clockwisePosition, target);
+					clockwiseMoveCount += 1;
+					clockwiseDist = clockwiseMoveCount * moveDist + distanceBetween(clockwisePosition, target);
 					
-					nearest = mostDirectBearing(clockwisePosition, target);
+					mostDirectBearing = mostDirectBearing(clockwisePosition, target);
 
-					
-					boolean tMove = testMove(clockwisePosition, nearest).isPresent();
+					boolean tMove = testMove(clockwisePosition, mostDirectBearing).isPresent();
 					int backtrack = mod360(clockwiseDirections.get(clockwiseDirections.size() - 1) - 180);
 					
-//					System.out.println(nearest);
-//					System.out.println(tMove);
-//					System.out.println(backtrack);
-					
-					if ((tMove && (nearest != backtrack)) || distanceBetween(clockwisePosition, target) < 0.0002) {
+					if ((tMove && (mostDirectBearing != backtrack)) || distanceBetween(clockwisePosition, target) < 0.0002) {
 						precomputedBearings.addAll(clockwiseDirections);
+						precomputedBearings.add(mostDirectBearing);
 						return precomputedBearings.poll();
 					}
-					
-					
 				} else {
 					clockwiseDist = Double.MAX_VALUE;
 					continue;
 				}
 			} else {
-				int nearest = mostDirectBearing(antiClockwisePosition, target);
-				var newBearing = bearingScan(antiClockwisePosition, nearest, 10, antiClockwiseDirections.isEmpty() ? nearest : mod360(antiClockwiseDirections.get(antiClockwiseDirections.size()-1) - 180));
+				mostDirectBearing = mostDirectBearing(antiClockwisePosition, target);
+				var newBearing = bearingScan(antiClockwisePosition, mostDirectBearing, 10, antiClockwiseDirections.isEmpty() ? mostDirectBearing : mod360(antiClockwiseDirections.get(antiClockwiseDirections.size()-1) - 180));
 				if (newBearing.isPresent()) {
 					antiClockwisePosition = testMove(antiClockwisePosition, newBearing.get()).get();
 					antiClockwiseDirections.add(newBearing.get());
-					antiClockwiseLength += 1;
-					antiClockwiseDist = antiClockwiseLength*0.0003 + distanceBetween(antiClockwisePosition, target);
+					antiClockwiseMoveCount += 1;
+					antiClockwiseDist = antiClockwiseMoveCount * moveDist + distanceBetween(antiClockwisePosition, target);
 					
-					nearest = mostDirectBearing(antiClockwisePosition, target);
+					mostDirectBearing = mostDirectBearing(antiClockwisePosition, target);
 					
-					
-					// End if there is a straight shot to the waypoint and the straight shot doesn't put us in the space we were just in
-					// We know the space we were just in did not give us a straight shot
-					// Also, 
-					if ((testMove(antiClockwisePosition, nearest).isPresent() && nearest != mod360(antiClockwiseDirections.get(antiClockwiseDirections.size() - 1) - 180)) || distanceBetween(antiClockwisePosition, target) < 0.0002) {
+					if ((testMove(antiClockwisePosition, mostDirectBearing).isPresent() && mostDirectBearing != mod360(antiClockwiseDirections.get(antiClockwiseDirections.size() - 1) - 180)) || distanceBetween(antiClockwisePosition, target) < 0.0002) {
 						precomputedBearings.addAll(antiClockwiseDirections);
+						precomputedBearings.add(mostDirectBearing);						
 						return precomputedBearings.poll();
 					}
 					
