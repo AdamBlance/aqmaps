@@ -9,8 +9,6 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
-import com.mapbox.turf.TurfConstants;
-import com.mapbox.turf.TurfTransformation;
 
 public class GeojsonGenerator {
 
@@ -36,7 +34,7 @@ public class GeojsonGenerator {
 			
 			var marker = Feature.fromGeometry(sensor.getPoint());
 			
-			var circ = Feature.fromGeometry(TurfTransformation.circle(sensor.getPoint(), 0.0002, 20, TurfConstants.UNIT_DEGREES));
+//			var circ = Feature.fromGeometry(TurfTransformation.circle(sensor.getPoint(), 0.0002, 20, TurfConstants.UNIT_DEGREES));
 			
 			marker.addStringProperty("location", sensor.getW3wAddress());
 			

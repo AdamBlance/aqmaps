@@ -6,20 +6,12 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.nearestBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.Queue;
-import java.util.Random;
-import java.util.Stack;
 
-import com.mapbox.geojson.Feature;
-import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 
 
@@ -31,7 +23,6 @@ public class Pilot {
 	private List<Point> path = new ArrayList<>();
 	private List<String> log = new ArrayList<>();
 	
-	private int lastBearingTaken;  // This might break if the first move hits a wall
 	private Point previousPosition;
 	
 	private Queue<Integer> precomputedBearings = new LinkedList<>();
@@ -54,7 +45,6 @@ public class Pilot {
 		}
 		
 		var start = new Waypoint(drone.getPosition());
-		lastBearingTaken = nearestBearing(drone.getPosition(), route.get(0).getPoint());
 		for (Waypoint s : route) {
 			boolean arrived = navigateTowards(s);
 			if (!arrived) {
@@ -77,7 +67,7 @@ public class Pilot {
 		boolean arrived = false;
 		while (!arrived) {
 			
-			int breakp = path.size();
+//			int breakp = path.size();
 			
 			previousPosition = drone.getPosition();
 			
@@ -91,8 +81,6 @@ public class Pilot {
 			}
 			
 			path.add(drone.getPosition());
-			
-			lastBearingTaken = bearing;
 			
 			String w3wLocation = null;
 			
@@ -112,7 +100,7 @@ public class Pilot {
 					drone.getTimesMoved(),
 					previousPosition.longitude(),
 					previousPosition.latitude(),
-					lastBearingTaken,
+					bearing,
 					pos.longitude(),
 					pos.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
