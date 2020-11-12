@@ -161,7 +161,12 @@ public class App {
 					
 			    	var pilot = new Pilot(drone, noFlyZoneChecker);
 			    	
-			    	var route = new FlightPlanner(sensors).twoOptPath(startPoint);
+			    	List<Waypoint> penis = new ArrayList<>();
+			    	for (var s : sensors) {
+			    		penis.add((Waypoint) s);
+			    	}
+			    	
+			    	var route = new FlightPlanner(penis).twoOptPath(startPoint);
 			    	
 			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Waypoint::getPoint).collect(Collectors.toList()))));
 			    				    	

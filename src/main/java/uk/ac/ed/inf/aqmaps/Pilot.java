@@ -71,9 +71,7 @@ public class Pilot {
 			
 			previousPosition = drone.getPosition();
 			
-						
 			int bearing = bestLegalBearing(targetPoint);
-			
 			var move = drone.move(bearing);
 			
 			if (!move) {
