@@ -6,8 +6,6 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,41 +19,51 @@ public class Pilot {
 
 	private Drone drone;
 	
-	// Given to gjg
 	private List<Point> path = new ArrayList<>();
 	private List<String> log = new ArrayList<>();
+	private HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
 	
 	private Queue<Integer> precomputedBearings = new LinkedList<>();
-	private HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
-	private NoFlyZoneChecker nfzc;
+	
+	private NoFlyZoneChecker noFlyZoneChecker;
 		
-	public Pilot(Drone drone, NoFlyZoneChecker nfzc) {
+	public Pilot(Drone drone, NoFlyZoneChecker noFlyZoneChecker) {
 		this.drone = drone;
-		this.nfzc = nfzc;
+		this.noFlyZoneChecker = noFlyZoneChecker;
 		path.add(drone.getPosition());
 	}
 	
-	// TODO: Write common terminology somewhere and standardise it
 	public boolean followRoute(List<Waypoint> route) {
+		createSensorReports(route);
+		var start = new Waypoint(drone.getPosition());
 		
 		for (var waypoint : route) {
-			sensorReports.put((Sensor) waypoint, new SensorReport(false, false));
-		}
-		
-		var start = new Waypoint(drone.getPosition());
-		for (Waypoint s : route) {
-			boolean arrived = navigateTowards(s);
+			boolean arrived = navigateTowards(waypoint);
 			if (!arrived) {
 				return false;
 			}
-			var reading = drone.readSensor((Sensor) s);
-			var report = sensorReports.get(s);
-			if (reading.isPresent()) {
-				report.setValid(true);
+			if (waypoint instanceof Sensor) {
+				readSensorAndRecordReading((Sensor) waypoint);
 			}
-			report.setVisited(true);
 		}
-		return navigateTowards(start);  // True if we make it back, false if not
+		return navigateTowards(start);  // True if we make it back, false if we don't.
+	}
+	
+	private void createSensorReports(List<Waypoint> waypoints) {
+		for (var waypoint : waypoints) {
+			if (waypoint instanceof Sensor) {
+				sensorReports.put((Sensor) waypoint, new SensorReport(false, false));
+			}
+		}
+	}
+	
+	private void readSensorAndRecordReading(Sensor sensor) {
+		var reading = drone.readSensor(sensor);
+		var report = sensorReports.get(sensor);
+		if (reading.isPresent()) {
+			report.setValid(true);
+		}
+		report.setVisited(true);
 	}
 	
 	private boolean navigateTowards(Waypoint waypoint) {
@@ -69,7 +77,7 @@ public class Pilot {
 			
 			var previousPosition = drone.getPosition();
 			
-			int bearing = bestLegalBearing(targetPoint);
+			int bearing = nextBearing(targetPoint);
 			var newPositionOptional = drone.move(bearing);
 			if (newPositionOptional.isEmpty()) {
 				break;
@@ -116,40 +124,31 @@ public class Pilot {
 	private Optional<Point> testMove(Point pos, int bearing) {
 		var destination = moveDestination(pos, 0.0003, bearing);
 		
-		if (nfzc.isMoveLegal(pos, destination)) {
+		if (noFlyZoneChecker.isMoveLegal(pos, destination)) {
 			return Optional.ofNullable(destination);
 		} else {
 			return Optional.empty();
 		}
 	}
 	
-	private class searchBranch {
+	private class SearchBranch {
 		
-		double branchDist = 0;
-		int branchMoveCount = 0;
+		double heuristic = 0;
+		int moveCount = 0;
 		Point branchHead;
-		
 		boolean stuck = false;
-		
 		Point target;
-		
-		double moveDist;
-		
 		int step;
-		
 		List<Integer> branchDirections = new ArrayList<>();
 		
-		public searchBranch(Point startPoint, Point target, boolean clockwise, double moveDist) {
+		public SearchBranch(Point startPoint, Point target, boolean clockwise) {
 			this.branchHead = startPoint;
-			this.moveDist = moveDist;
 			step = clockwise ? -10 : 10;
 			this.target = target;
 		}
 		
-		public boolean explore() {
-			
+		public void explore() {
 			int mostDirectBearing = mostDirectBearing(branchHead, target);
-			
 			int backtrack;
 			if (branchDirections.isEmpty()) {
 				backtrack = mostDirectBearing;
@@ -160,22 +159,17 @@ public class Pilot {
 			var newBearingOptional = bearingScan(branchHead, mostDirectBearing, step, backtrack);
 			if (newBearingOptional.isPresent()) {
 				var newBearing = newBearingOptional.get();
-				branchHead = testMove(branchHead, newBearing).get();  // This isn't exactly graceful, could equally use getMoveResult
+				branchHead = testMove(branchHead, newBearing).get();
 				branchDirections.add(newBearing);
-				branchMoveCount += 1;
-				branchDist = branchMoveCount * moveDist + distanceBetween(branchHead, target);
-				
-				// We've moved along the side of the building
-				// Now, have we arrived at our destination, or found a clear direct path to the target?
+				moveCount += 1;
+				heuristic = moveCount * Drone.MOVE_DISTANCE + distanceBetween(branchHead, target);
 			} else {
-				branchDist = Double.MAX_VALUE;
+				heuristic = Double.MAX_VALUE;
 				stuck = true;
-			}
-			return endingCheck();
-			
+			}			
 		}
 		
-		public boolean endingCheck() {
+		public boolean isFinished() {
 			if (distanceBetween(branchHead, target) < drone.getSensorReadDistance()) {
 				return true;
 			}
@@ -195,7 +189,7 @@ public class Pilot {
 		}
 		
 		public double getHeuristic() {
-			return branchDist;
+			return heuristic;
 		}
 		
 		public List<Integer> getBranchDirections() {
@@ -205,48 +199,38 @@ public class Pilot {
 		public boolean isStuck() {
 			return stuck;
 		}
-
-//		@Override
-//		public int compareTo(searchBranch arg0) {
-//			return ((Double) getHeuristic()).compareTo(arg0.getHeuristic());
-//		}
-
-		
 	}
 	
-	private int bestLegalBearing(Point target) {
-		
+	private int nextBearing(Point target) {
 		if (!precomputedBearings.isEmpty()) {
 			return precomputedBearings.poll();
 		}
 		
 		var dronePos = drone.getPosition();
 		int mostDirectBearing = mostDirectBearing(dronePos, target);
-		
 		if (testMove(dronePos, mostDirectBearing).isPresent()) {
 			return mostDirectBearing;
 		}
 		
-		final double MOVE_DISTANCE = drone.getMoveDistance();
-		
-		var CWBranch = new searchBranch(dronePos, target, true, MOVE_DISTANCE); // maybe look at the static final field getters? 
-		var ACWBranch = new searchBranch(dronePos, target, false, MOVE_DISTANCE);
+		var CWBranch = new SearchBranch(dronePos, target, true);
+		var ACWBranch = new SearchBranch(dronePos, target, false);
 		
 		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
-			var shortestBranch = CWBranch.getHeuristic() < ACWBranch.getHeuristic() ? CWBranch : ACWBranch;
-			boolean foundEnd = shortestBranch.explore();
-			if (foundEnd) {
+			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
+			shortestBranch.explore();
+			if (shortestBranch.isFinished()) {
 				precomputedBearings.addAll(shortestBranch.getBranchDirections());
 				return precomputedBearings.poll();
 			}
 		}
-		throw new IllegalStateException("The drone cannot escape and is stuck for eternity :(");
+		throw new IllegalStateException("The drone cannot escape and is stuck for eternity.");
 	}
 	
-	
-	// Will return empty if nothing is found which is very unlikely
-	private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {
+	static class Move {
 		
+	}
+	
+	private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {	
 		Optional<Integer> newBearing = Optional.empty();
 		
 		int bearing = mod360(startBearing + offset);
@@ -258,7 +242,5 @@ public class Pilot {
 			 bearing = mod360(bearing + offset);
 		}
 		return newBearing;
-		
 	}
-	
 }

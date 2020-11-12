@@ -12,14 +12,14 @@ public class Drone {
 	private Point position;
 	private int timesMoved = 0;
 	
-	private static final double MOVE_DISTANCE = 0.0003;
-	private static final double SENSOR_READ_DISTANCE = 0.0002;
-	private static final int MAX_MOVES = 150;
+	public static final double MOVE_DISTANCE = 0.0003;
+	public static final double SENSOR_READ_DISTANCE = 0.0002;
+	public static final int MAX_MOVES = 150;
 	
 	public Drone(Point startPosition) {
 		position = startPosition;
 	}
-	
+
 	public Optional<Point> move(int bearing) {
 		if (outOfMoves()) {
 			return Optional.empty();
@@ -29,21 +29,20 @@ public class Drone {
 		timesMoved += 1;
 		return Optional.of(position);
 	}
-	
+
 	public Point getPosition() {
 		return position;
 	}
 
 	public Optional<Double> readSensor(Sensor sensor) {
 		if (distanceBetween(position, sensor.getPoint()) < SENSOR_READ_DISTANCE) {
-			
 			if (sensor.getBattery() >= 10.0) {
 				return Optional.of(sensor.getReading());
 			} else {
 				return Optional.empty();
 			}
 		} else {
-			throw new RuntimeException("You numpty. Too far away from sensor.");
+			throw new RuntimeException("");
 		}
 	}
 	
