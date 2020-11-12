@@ -89,7 +89,7 @@ public class NoFlyZoneChecker {
 		var S = start;
 		var E = end;
 		
-		var SE = normalise(S, E);
+		var SE = toVector(S, E);
 		
 		var polyPoints = poly.coordinates().get(0);
 		for (int i = 0; i < polyPoints.size() - 1; i++) {
@@ -97,12 +97,12 @@ public class NoFlyZoneChecker {
 			var P = polyPoints.get(i);
 			var Q = polyPoints.get(i+1);
 			
-			var PQ = normalise(P, Q);
+			var PQ = toVector(P, Q);
 			
-			var SP = normalise(S, P);
-			var SQ = normalise(S, Q);
-			var PS = normalise(P, S);
-			var PE = normalise(P, E);
+			var SP = toVector(S, P);
+			var SQ = toVector(S, Q);
+			var PS = toVector(P, S);
+			var PE = toVector(P, E);
 			
 			// TODO: Maybe look at weird conditions from that webpage
 			
@@ -172,8 +172,8 @@ public class NoFlyZoneChecker {
 	
 	// The name "normalise" is potentially confusing.
 	// This takes two points that define a line segment. 
-	// It then moves both points so that point a lies at (0, 0).
-	private static Point normalise(Point a, Point b) {
+	// It then moves both points so that point A lies at (0, 0).
+	private static Point toVector(Point a, Point b) {
 		return Point.fromLngLat(
 				b.longitude() - a.longitude(),
 				b.latitude() - a.latitude());

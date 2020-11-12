@@ -49,7 +49,7 @@ public class GeojsonGenerator {
 				marker.addStringProperty("marker-symbol", "cross");
 			} else {
 				var reading = sensor.getReading();
-				int i = (reading <= 255.0) ? ((int) reading) / 32 : 7;  // If less than 255, calculate colour. If greater, set max colour.
+				int i = (reading <= 255.0) ? ((int) reading) / 32 : 7;  // If less than 255, calculate colour. If greater, set max colour (CW doc says 256.0 is max)
 				var colour = COLOURS[i];
 				marker.addStringProperty("rgb-string", colour);
 				marker.addStringProperty("marker-color", colour);

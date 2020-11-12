@@ -157,11 +157,11 @@ public class App {
 							nfzs,
 							BoundingBox.fromLngLats(-3.192473, 55.942617, -3.184319, 55.946233));							
 					
-					var drone = new Drone(startPoint, sensors, noFlyZoneChecker);
+					var drone = new Drone(startPoint);
 					
 			    	var pilot = new Pilot(drone, noFlyZoneChecker);
 			    	
-			    	var route = new FlightPlanner(sensors, noFlyZoneChecker).twoOptPath(startPoint);
+			    	var route = new FlightPlanner(sensors).twoOptPath(startPoint);
 			    	
 			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Waypoint::getPoint).collect(Collectors.toList()))));
 			    				    	
