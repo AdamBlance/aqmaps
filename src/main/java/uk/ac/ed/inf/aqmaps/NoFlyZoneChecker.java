@@ -65,19 +65,19 @@ public class NoFlyZoneChecker {
 			if (pointStrictlyInsideBoundingBox(origin, zone.bbox()) || 
 					pointStrictlyInsideBoundingBox(destination, zone.bbox())) {
 				
-				System.out.println("in bound");
+//				System.out.println("in bound");
 				if (lineIntersectsPolygon(origin, destination, boundariesWithNoFlyZones.get(zone))) {
-					System.out.println("intersects");
+//					System.out.println("intersects");
 					return false;
 				}
 			} else if (lineIntersectsPolygon(origin, destination, zone)){
-				System.out.println("crossed bound");
+//				System.out.println("crossed bound");
 				if (lineIntersectsPolygon(origin, destination, boundariesWithNoFlyZones.get(zone))) {
-					System.out.println("intersects!");
+//					System.out.println("intersects!");
 					return false;
 				}
 			} else {
-				System.out.println("nope!");
+//				System.out.println("nope!");
 			}
 		}
 		return true;

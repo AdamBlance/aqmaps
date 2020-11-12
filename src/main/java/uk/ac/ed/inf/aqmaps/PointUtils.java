@@ -11,7 +11,7 @@ public class PointUtils {
 	
 	// TODO: Look into this breaking when the origin and destination are the same
 	// Get the bearing you take to go from origin to destination rounded to nearest 10
-	public static int nearestBearing(Point origin, Point destination) {	
+	public static int mostDirectBearing(Point origin, Point destination) {	
 		double latDist = destination.latitude() - origin.latitude();
 		double longDist = destination.longitude() - origin.longitude();
 		

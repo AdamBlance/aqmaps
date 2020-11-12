@@ -20,14 +20,14 @@ public class Drone {
 		position = startPosition;
 	}
 	
-	public boolean move(int bearing) {
+	public Optional<Point> move(int bearing) {
 		if (outOfMoves()) {
-			return false;
+			return Optional.empty();
 		}
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
 		position = destination;
 		timesMoved += 1;
-		return true;
+		return Optional.of(position);
 	}
 	
 	public Point getPosition() {

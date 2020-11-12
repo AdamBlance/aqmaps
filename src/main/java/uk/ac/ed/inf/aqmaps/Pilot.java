@@ -2,7 +2,7 @@ package uk.ac.ed.inf.aqmaps;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
-import static uk.ac.ed.inf.aqmaps.PointUtils.nearestBearing;
+import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
 import java.util.ArrayList;
@@ -23,12 +23,8 @@ public class Pilot {
 	private List<Point> path = new ArrayList<>();
 	private List<String> log = new ArrayList<>();
 	
-	private Point previousPosition;
-	
 	private Queue<Integer> precomputedBearings = new LinkedList<>();
-	
 	private HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
-	
 	private NoFlyZoneChecker nfzc;
 		
 	public Pilot(Drone drone, NoFlyZoneChecker nfzc) {
@@ -69,38 +65,32 @@ public class Pilot {
 			
 //			int breakp = path.size();
 			
-			previousPosition = drone.getPosition();
+			var previousPosition = drone.getPosition();
 			
 			int bearing = bestLegalBearing(targetPoint);
-			var move = drone.move(bearing);
-			
-			if (!move) {
+			var newPositionOptional = drone.move(bearing);
+			if (newPositionOptional.isEmpty()) {
 				break;
 			}
 			
-			path.add(drone.getPosition());
+			var newPosition = newPositionOptional.get();
 			
 			String w3wLocation = null;
-			
-			var temp = distanceBetween(drone.getPosition(), targetPoint); 
-			
-//			System.out.println(temp);
-			
-			if (temp <= drone.getSensorReadDistance()) {
+			if (distanceBetween(drone.getPosition(), targetPoint) <= drone.getSensorReadDistance()) {
 				if (waypoint instanceof Sensor) {
 					w3wLocation = ((Sensor) waypoint).getW3wAddress();
 				}
 				arrived = true;
 			}
 			
-			var pos = drone.getPosition();
+			path.add(newPosition);
 			log.add(String.format("%d,%f,%f,%d,%f,%f,%s",
 					drone.getTimesMoved(),
 					previousPosition.longitude(),
 					previousPosition.latitude(),
 					bearing,
-					pos.longitude(),
-					pos.latitude(),
+					newPosition.longitude(),
+					newPosition.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
 			
 //			System.out.println(LineString.fromLngLats(path).toJson());
@@ -121,10 +111,7 @@ public class Pilot {
 		return log;
 	}
 	
-	public Optional<Point> testMove(Point pos, int bearing) {
-		
-		
-		
+	private Optional<Point> testMove(Point pos, int bearing) {
 		var destination = moveDestination(pos, 0.0003, bearing);
 		
 		if (nfzc.isMoveLegal(pos, destination)) {
@@ -140,11 +127,11 @@ public class Pilot {
 			return precomputedBearings.poll();
 		}
 		
-		int nearestBearing = nearestBearing(drone.getPosition(), target);
+		int mostDirectBearing = mostDirectBearing(drone.getPosition(), target);
 		var dronePos = drone.getPosition();
 		
-		if (testMove(dronePos, nearestBearing).isPresent()) {
-			return nearestBearing;
+		if (testMove(dronePos, mostDirectBearing).isPresent()) {
+			return mostDirectBearing;
 		}
 		
 		// Distance around the building going clockwise/anticlockwise
@@ -166,7 +153,7 @@ public class Pilot {
 		while (clockwiseDist < Double.MAX_VALUE || antiClockwiseDist < Double.MAX_VALUE) {
 			
 			if (clockwiseDist < antiClockwiseDist) {
-				int nearest = nearestBearing(clockwisePosition, target);
+				int nearest = mostDirectBearing(clockwisePosition, target);
 				var newBearing = bearingScan(clockwisePosition, nearest, -10, clockwiseDirections.isEmpty() ? nearest : mod360(clockwiseDirections.get(clockwiseDirections.size()-1) - 180));
 				if (newBearing.isPresent()) {
 					clockwisePosition = testMove(clockwisePosition, newBearing.get()).get();
@@ -174,7 +161,7 @@ public class Pilot {
 					clockwiseLength += 1;
 					clockwiseDist = clockwiseLength*0.0003 + distanceBetween(clockwisePosition, target);
 					
-					nearest = nearestBearing(clockwisePosition, target);
+					nearest = mostDirectBearing(clockwisePosition, target);
 
 					
 					boolean tMove = testMove(clockwisePosition, nearest).isPresent();
@@ -195,7 +182,7 @@ public class Pilot {
 					continue;
 				}
 			} else {
-				int nearest = nearestBearing(antiClockwisePosition, target);
+				int nearest = mostDirectBearing(antiClockwisePosition, target);
 				var newBearing = bearingScan(antiClockwisePosition, nearest, 10, antiClockwiseDirections.isEmpty() ? nearest : mod360(antiClockwiseDirections.get(antiClockwiseDirections.size()-1) - 180));
 				if (newBearing.isPresent()) {
 					antiClockwisePosition = testMove(antiClockwisePosition, newBearing.get()).get();
@@ -203,7 +190,7 @@ public class Pilot {
 					antiClockwiseLength += 1;
 					antiClockwiseDist = antiClockwiseLength*0.0003 + distanceBetween(antiClockwisePosition, target);
 					
-					nearest = nearestBearing(antiClockwisePosition, target);
+					nearest = mostDirectBearing(antiClockwisePosition, target);
 					
 					
 					// End if there is a straight shot to the waypoint and the straight shot doesn't put us in the space we were just in
