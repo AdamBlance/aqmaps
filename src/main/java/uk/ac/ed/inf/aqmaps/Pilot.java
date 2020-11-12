@@ -156,10 +156,10 @@ public class Pilot {
 				backtrack = mod360(lastBearing() - 180);
 			}
 			
-			var newBearingOptional = bearingScan(branchHead, mostDirectBearing, step, backtrack);
-			if (newBearingOptional.isPresent()) {
-				var newBearing = newBearingOptional.get();
-				branchHead = testMove(branchHead, newBearing).get();
+			var legalBearing = bearingScan(branchHead, mostDirectBearing, step, backtrack);
+			if (legalBearing.isPresent()) {
+				var newBearing = legalBearing.get();
+				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
 				branchDirections.add(newBearing);
 				moveCount += 1;
 				heuristic = moveCount * Drone.MOVE_DISTANCE + distanceBetween(branchHead, target);
@@ -226,21 +226,18 @@ public class Pilot {
 		throw new IllegalStateException("The drone cannot escape and is stuck for eternity.");
 	}
 	
-	static class Move {
-		
-	}
-	
 	private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {	
-		Optional<Integer> newBearing = Optional.empty();
+		Optional<Integer> legalBearing = Optional.empty();
 		
 		int bearing = mod360(startBearing + offset);
 		while (bearing != limitBearing) {
-			 if (testMove(position, bearing).isPresent()) {
-				 newBearing = Optional.of(bearing);
+			var move = testMove(position, bearing);
+			if (move.isPresent()) {
+				 legalBearing = Optional.of(bearing);
 				 break;
 			 }
 			 bearing = mod360(bearing + offset);
 		}
-		return newBearing;
+		return legalBearing;
 	}
 }
