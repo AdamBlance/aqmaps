@@ -6,13 +6,16 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
 
+import com.mapbox.geojson.BoundingBox;
 import com.mapbox.geojson.Point;
+import com.mapbox.geojson.Polygon;
 
 
 public class Pilot {
@@ -27,9 +30,9 @@ public class Pilot {
 	
 	private NoFlyZoneChecker noFlyZoneChecker;
 		
-	public Pilot(Drone drone, NoFlyZoneChecker noFlyZoneChecker) {
+	public Pilot(Drone drone, List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 		this.drone = drone;
-		this.noFlyZoneChecker = noFlyZoneChecker;
+		this.noFlyZoneChecker = new NoFlyZoneChecker(noFlyZones, droneConfinementArea);
 		path.add(drone.getPosition());
 	}
 	
@@ -71,17 +74,16 @@ public class Pilot {
 		boolean arrived = false;
 		while (!arrived) {
 			
-//			int breakp = path.size();
-			
 			var previousPosition = drone.getPosition();
 			
-			int bearing = nextBearing(waypoint.getPoint());
-			var newPositionOptional = drone.move(bearing);
-			if (newPositionOptional.isEmpty()) {
+			var bearing = nextBearing(waypoint.getPoint());
+			if (bearing.isEmpty()) {
 				break;
 			}
 			
-			var newPosition = newPositionOptional.get();
+			drone.move(bearing.get());
+			
+			var newPosition = drone.getPosition();
 			
 			String w3wLocation = null;
 			if (inRange(waypoint)) {
@@ -101,7 +103,6 @@ public class Pilot {
 					newPosition.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
 			
-//			System.out.println(LineString.fromLngLats(path).toJson());
 		}
 		return arrived;
 	}
@@ -122,16 +123,170 @@ public class Pilot {
 		return log;
 	}
 	
-	
-	// I made a bunch of things static, maybe don't have to be. No fly zone is only used here. Could even move it into the checker itself? 
-	
-	private Optional<Point> testMove(Point pos, int bearing) {
-		var destination = moveDestination(pos, 0.0003, bearing);
+	private Optional<Integer> nextBearing(Point target) {
+		// Return the next pre-computed bearing if it exists
+		if (!precomputedBearings.isEmpty()) {
+			return Optional.of(precomputedBearings.poll());
+		}
 		
-		if (noFlyZoneChecker.isMoveLegal(pos, destination)) {
-			return Optional.ofNullable(destination);
-		} else {
-			return Optional.empty();
+		// Otherwise, return the most direct bearing to the target if taking that bearing would be legal
+		var dronePos = drone.getPosition();
+		int mostDirectBearing = mostDirectBearing(dronePos, target);
+		if (noFlyZoneChecker.isMoveLegal(dronePos, mostDirectBearing)) {
+			return Optional.of(mostDirectBearing);
+		}
+		
+		// Finally, if both fail, attempt to find a path around the obstruction
+		var pathToTake = computeLegalPath(target);
+		if (!pathToTake.isEmpty()) {
+			// Add the path to the precomputed queue
+			precomputedBearings.addAll(pathToTake);
+			return Optional.of(precomputedBearings.poll());	
+		}
+		
+		// If all this fails, we're stuck
+		return Optional.empty();
+	}
+	
+	
+	private List<Integer> computeLegalPath(Point target) {
+		var CWBranch = new SearchBranch(target, true);
+		var ACWBranch = new SearchBranch(target, false);
+		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
+			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
+			shortestBranch.explore();
+			if (shortestBranch.isFinished()) {
+				return shortestBranch.getBranchDirections();
+			}
+		}
+		return new ArrayList<Integer>();
+	}
+	
+	private static class NoFlyZoneChecker {
+
+		private BoundingBox droneConfinementArea;
+		private HashMap<Polygon, Polygon> boundariesWithNoFlyZones = new HashMap<>();
+		
+		public NoFlyZoneChecker(List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
+			calculateBoundaries(noFlyZones);  // Populates boundariesWithNoFlyZones
+			this.droneConfinementArea = droneConfinementArea;
+		}
+		
+		// https://martin-thoma.com/how-to-check-if-two-line-segments-intersect/	
+		public boolean isMoveLegal(Point origin, int bearing) {
+			var destination = moveDestination(origin, Drone.MOVE_DISTANCE, bearing);
+			if (!pointStrictlyInsideBoundingBox(destination, droneConfinementArea)) {
+				return false;
+			}
+
+			for (var zone : boundariesWithNoFlyZones.keySet()) {
+				if (pointStrictlyInsideBoundingBox(origin, zone.bbox()) || 
+						pointStrictlyInsideBoundingBox(destination, zone.bbox())) {				
+					if (lineIntersectsPolygon(origin, destination, boundariesWithNoFlyZones.get(zone))) {
+						return false;
+					}
+				} else if (lineIntersectsPolygon(origin, destination, zone)){
+					if (lineIntersectsPolygon(origin, destination, boundariesWithNoFlyZones.get(zone))) {
+						return false;
+					}
+				}
+			}
+			return true;
+		}
+		
+		private static boolean lineIntersectsPolygon(Point start, Point end, Polygon poly) {
+			var S = start;
+			var E = end;
+			
+			var SE = toVector(S, E);
+			
+			var polyPoints = poly.coordinates().get(0);
+			for (int i = 0; i < polyPoints.size() - 1; i++) {
+				
+				var P = polyPoints.get(i);
+				var Q = polyPoints.get(i+1);
+				var PQ = toVector(P, Q);
+				
+				var SP = toVector(S, P);
+				var SQ = toVector(S, Q);
+				var PS = toVector(P, S);
+				var PE = toVector(P, E);
+							
+				if (vectorsOppositeSidesOfLine(PS, PE, PQ) && vectorsOppositeSidesOfLine(SP, SQ, SE)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		private static boolean pointStrictlyInsideBoundingBox(Point point, BoundingBox bound) {
+			var lng = point.longitude();
+			var lat = point.latitude();
+			return lng > bound.west() && lng < bound.east() 
+					&& lat > bound.south() && lat < bound.north(); 
+		}
+		
+		private void calculateBoundaries(List<Polygon> noFlyZones) {
+			for (var zone : noFlyZones) {
+				double minLong = 1000; 
+				double maxLong = -1000;
+				double minLat = 1000;
+				double maxLat = -1000;
+							
+				for (var point : zone.coordinates().get(0)) {
+					var lng = point.longitude();
+					var lat = point.latitude();
+					if (lng < minLong) {
+						minLong = lng;
+					}
+					if (lng > maxLong) {
+						maxLong = lng;
+					}
+					if (lat < minLat) {
+						minLat = lat;
+					}
+					if (lat > maxLat) {
+						maxLat = lat;
+					}
+				}
+				
+				double epsilon = 0.00005;  // Buffer room
+				minLong -= epsilon;
+				maxLong += epsilon;
+				minLat -= epsilon;
+				maxLat += epsilon;
+				
+				var boundingBox = BoundingBox.fromLngLats(minLong, minLat, maxLong, maxLat);
+				
+				var points = new ArrayList<Point>(Arrays.asList(
+						boundingBox.northeast(),
+						Point.fromLngLat(minLong, maxLat),
+						boundingBox.southwest(),
+						Point.fromLngLat(maxLong, minLat),
+						boundingBox.northeast()));
+						
+				var polyBound = Polygon.fromLngLats(new ArrayList<>(Arrays.asList(points)), boundingBox);
+				boundariesWithNoFlyZones.put(polyBound, zone);
+			}
+		}
+		
+		// This takes two points that define a line segment and returns the vector
+		private static Point toVector(Point a, Point b) {
+			return Point.fromLngLat(
+					b.longitude() - a.longitude(),
+					b.latitude() - a.latitude());
+		}
+		
+		// Cross product is only defined in 3D
+		// It is helpful here for checking which side of a line a point is on (the sign changes)
+		// We're only solving for one component of the cross product
+		private static double cross(Point a, Point b) {
+			return a.longitude()*b.latitude() - a.latitude()*b.longitude();
+		}
+		
+		// Basically you're using the cross product to see which side of the line each point is
+		private static boolean vectorsOppositeSidesOfLine(Point vectorA, Point vectorB, Point lineVector) {
+			return (cross(lineVector, vectorA) >= 0) ^ (cross(lineVector, vectorB) >= 0);
 		}
 	}
 	
@@ -145,8 +300,8 @@ public class Pilot {
 		int step;
 		List<Integer> branchDirections = new ArrayList<>();
 		
-		public SearchBranch(Point startPoint, Point target, boolean clockwise) {
-			this.branchHead = startPoint;
+		public SearchBranch(Point target, boolean clockwise) {
+			this.branchHead = drone.getPosition();
 			step = clockwise ? -10 : 10;
 			this.target = target;
 		}
@@ -173,13 +328,24 @@ public class Pilot {
 			}			
 		}
 		
+		private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {			
+			int bearing = mod360(startBearing + offset);
+			while (bearing != limitBearing) {
+				if (noFlyZoneChecker.isMoveLegal(position, bearing)) {
+					 return Optional.of(bearing);
+				 }
+				 bearing = mod360(bearing + offset);
+			}
+			return Optional.empty();
+		}
+		
 		public boolean isFinished() {
 			if (distanceBetween(branchHead, target) < Drone.SENSOR_READ_DISTANCE) {
 				return true;
 			}
 			int mostDirectBearing = mostDirectBearing(branchHead, target);
 			int backtrackBearing = mod360(lastBearing() - 180);
-			boolean moveIsLegal = testMove(branchHead, mostDirectBearing).isPresent();
+			boolean moveIsLegal = noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing);
 			
 			if (moveIsLegal && (mostDirectBearing != backtrackBearing)) {
 				branchDirections.add(mostDirectBearing);
@@ -203,45 +369,5 @@ public class Pilot {
 		public boolean isStuck() {
 			return stuck;
 		}
-	}
-	
-	private int nextBearing(Point target) {
-		if (!precomputedBearings.isEmpty()) {
-			return precomputedBearings.poll();
-		}
-		
-		var dronePos = drone.getPosition();
-		int mostDirectBearing = mostDirectBearing(dronePos, target);
-		if (testMove(dronePos, mostDirectBearing).isPresent()) {
-			return mostDirectBearing;
-		}
-		
-		var CWBranch = new SearchBranch(dronePos, target, true);
-		var ACWBranch = new SearchBranch(dronePos, target, false);
-		
-		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
-			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
-			shortestBranch.explore();
-			if (shortestBranch.isFinished()) {
-				precomputedBearings.addAll(shortestBranch.getBranchDirections());
-				return precomputedBearings.poll();
-			}
-		}
-		throw new IllegalStateException("The drone cannot escape and is stuck for eternity...");
-	}
-	
-	private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {	
-		Optional<Integer> legalBearing = Optional.empty();
-		
-		int bearing = mod360(startBearing + offset);
-		while (bearing != limitBearing) {
-			var move = testMove(position, bearing);
-			if (move.isPresent()) {
-				 legalBearing = Optional.of(bearing);
-				 break;
-			 }
-			 bearing = mod360(bearing + offset);
-		}
-		return legalBearing;
 	}
 }

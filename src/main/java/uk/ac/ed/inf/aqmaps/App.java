@@ -153,13 +153,9 @@ public class App {
 					count += 1;
 					
 					
-					var noFlyZoneChecker = new NoFlyZoneChecker(
-							nfzs,
-							BoundingBox.fromLngLats(-3.192473, 55.942617, -3.184319, 55.946233));							
-					
 					var drone = new Drone(startPoint);
 					
-			    	var pilot = new Pilot(drone, noFlyZoneChecker);
+			    	var pilot = new Pilot(drone, nfzs, BoundingBox.fromLngLats(-3.192473, 55.942617, -3.184319, 55.946233));
 			    	
 			    	List<Waypoint> penis = new ArrayList<>();
 			    	for (var s : sensors) {
