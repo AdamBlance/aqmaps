@@ -42,20 +42,12 @@ public class Drone {
 				return Optional.empty();
 			}
 		} else {
-			throw new RuntimeException("");
+			throw new IllegalStateException("Drone is too far away to read sensor.");
 		}
 	}
 	
 	public int getTimesMoved() {
 		return timesMoved;
-	}
-	
-	public double getMoveDistance() {
-		return MOVE_DISTANCE;
-	}
-	
-	public double getSensorReadDistance() {
-		return SENSOR_READ_DISTANCE;
 	}
 	
 	private boolean outOfMoves() {

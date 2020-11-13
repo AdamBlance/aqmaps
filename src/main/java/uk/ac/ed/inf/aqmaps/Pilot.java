@@ -68,8 +68,6 @@ public class Pilot {
 	
 	private boolean navigateTowards(Waypoint waypoint) {
 		
-		var targetPoint = waypoint.getPoint();
-		
 		boolean arrived = false;
 		while (!arrived) {
 			
@@ -77,7 +75,7 @@ public class Pilot {
 			
 			var previousPosition = drone.getPosition();
 			
-			int bearing = nextBearing(targetPoint);
+			int bearing = nextBearing(waypoint.getPoint());
 			var newPositionOptional = drone.move(bearing);
 			if (newPositionOptional.isEmpty()) {
 				break;
@@ -86,7 +84,7 @@ public class Pilot {
 			var newPosition = newPositionOptional.get();
 			
 			String w3wLocation = null;
-			if (distanceBetween(drone.getPosition(), targetPoint) <= drone.getSensorReadDistance()) {
+			if (inRange(waypoint)) {
 				if (waypoint instanceof Sensor) {
 					w3wLocation = ((Sensor) waypoint).getW3wAddress();
 				}
@@ -104,13 +102,16 @@ public class Pilot {
 					w3wLocation == null ? "null" : w3wLocation));
 			
 //			System.out.println(LineString.fromLngLats(path).toJson());
-			
 		}
 		return arrived;
 	}
 	
 	public List<Point> getPath() {
 		return path;
+	}
+	
+	private boolean inRange(Waypoint waypoint) {
+		return distanceBetween(drone.getPosition(), waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE;
 	}
 	
 	public HashMap<Sensor, SensorReport> getSensorReports() {
@@ -120,6 +121,9 @@ public class Pilot {
 	public List<String> getLog() {
 		return log;
 	}
+	
+	
+	// I made a bunch of things static, maybe don't have to be. No fly zone is only used here. Could even move it into the checker itself? 
 	
 	private Optional<Point> testMove(Point pos, int bearing) {
 		var destination = moveDestination(pos, 0.0003, bearing);
@@ -170,7 +174,7 @@ public class Pilot {
 		}
 		
 		public boolean isFinished() {
-			if (distanceBetween(branchHead, target) < drone.getSensorReadDistance()) {
+			if (distanceBetween(branchHead, target) < Drone.SENSOR_READ_DISTANCE) {
 				return true;
 			}
 			int mostDirectBearing = mostDirectBearing(branchHead, target);
@@ -223,7 +227,7 @@ public class Pilot {
 				return precomputedBearings.poll();
 			}
 		}
-		throw new IllegalStateException("The drone cannot escape and is stuck for eternity.");
+		throw new IllegalStateException("The drone cannot escape and is stuck for eternity...");
 	}
 	
 	private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {	
