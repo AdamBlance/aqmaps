@@ -76,7 +76,7 @@ public class Pilot {
 			
 			var previousPosition = drone.getPosition();
 			
-			var bearing = nextBearing(waypoint.getPoint());
+			var bearing = nextBearing(waypoint);
 			if (bearing.isEmpty()) {
 				break;
 			}
@@ -123,7 +123,7 @@ public class Pilot {
 	}
 	
 	// make waypoint
-	private Optional<Integer> nextBearing(Point target) {
+	private Optional<Integer> nextBearing(Waypoint waypoint) {
 		// Return the next pre-computed bearing if it exists
 		if (!precomputedBearings.isEmpty()) {
 			return Optional.of(precomputedBearings.poll());
@@ -131,13 +131,13 @@ public class Pilot {
 		
 		// Otherwise, return the most direct bearing to the target if taking that bearing would be legal
 		var dronePos = drone.getPosition();
-		int mostDirectBearing = mostDirectBearing(dronePos, target);
+		int mostDirectBearing = mostDirectBearing(dronePos, waypoint.getPoint());
 		if (noFlyZoneChecker.isMoveLegal(dronePos, mostDirectBearing)) {
 			return Optional.of(mostDirectBearing);
 		}
 		
 		// Finally, if both fail, attempt to find a path around the obstruction
-		var pathToTake = computeLegalPath(target);
+		var pathToTake = computeLegalPath(waypoint);
 		if (!pathToTake.isEmpty()) {
 			// Add the path to the pre-computed queue
 			precomputedBearings.addAll(pathToTake);
@@ -148,9 +148,9 @@ public class Pilot {
 		return Optional.empty();
 	}
 	
-	private List<Integer> computeLegalPath(Point target) {
-		var CWBranch = new SearchBranch(target, true);
-		var ACWBranch = new SearchBranch(target, false);
+	private List<Integer> computeLegalPath(Waypoint waypoint) {
+		var CWBranch = new SearchBranch(waypoint, true);
+		var ACWBranch = new SearchBranch(waypoint, false);
 		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
 			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
 			shortestBranch.explore();
@@ -295,18 +295,18 @@ public class Pilot {
 		int moveCount = 0;
 		Point branchHead;
 		boolean stuck = false;
-		Point target;
+		Point waypointPoint;
 		int step;
 		List<Integer> branchDirections = new ArrayList<>();
 		
-		public SearchBranch(Point target, boolean clockwise) {
+		public SearchBranch(Waypoint waypoint, boolean clockwise) {
 			this.branchHead = drone.getPosition();
 			step = clockwise ? -10 : 10;
-			this.target = target;
+			this.waypointPoint = waypoint.getPoint();
 		}
 		
 		public void explore() {
-			int mostDirectBearing = mostDirectBearing(branchHead, target);
+			int mostDirectBearing = mostDirectBearing(branchHead, waypointPoint);
 			int backtrack;
 			if (branchDirections.isEmpty()) {
 				backtrack = mostDirectBearing;
@@ -320,7 +320,7 @@ public class Pilot {
 				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
 				branchDirections.add(newBearing);
 				moveCount += 1;
-				heuristic = moveCount * Drone.MOVE_DISTANCE + distanceBetween(branchHead, target);
+				heuristic = moveCount * Drone.MOVE_DISTANCE + distanceBetween(branchHead, waypointPoint);
 			} else {
 				heuristic = Double.MAX_VALUE;
 				stuck = true;
@@ -339,10 +339,10 @@ public class Pilot {
 		}
 		
 		public boolean isFinished() {
-			if (distanceBetween(branchHead, target) < Drone.SENSOR_READ_DISTANCE) {
+			if (distanceBetween(branchHead, waypointPoint) < Drone.SENSOR_READ_DISTANCE) {
 				return true;
 			}
-			int mostDirectBearing = mostDirectBearing(branchHead, target);
+			int mostDirectBearing = mostDirectBearing(branchHead, waypointPoint);
 			int backtrackBearing = mod360(lastBearing() - 180);
 			boolean moveIsLegal = noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing);
 			

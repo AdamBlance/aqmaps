@@ -28,12 +28,12 @@ public class App {
     	String day = args[0];
     	String month = args[1];
     	String year = args[2];
-    	var startLat = Double.parseDouble(args[3]);
-    	var startLng = Double.parseDouble(args[4]);
+    	double startLat = Double.parseDouble(args[3]);
+    	double startLong = Double.parseDouble(args[4]);
     	var seed = Integer.parseInt(args[5]);
     	String port = args[6];
     	
-    	var startPoint = Point.fromLngLat(startLng, startLat);
+    	var startPoint = Point.fromLngLat(startLong, startLat);
     	
     	var webserver = Webserver.getInstanceWithConfig("http://localhost", port);
     	
