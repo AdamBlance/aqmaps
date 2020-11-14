@@ -69,7 +69,7 @@ public class Webserver {
 		}
 		return sensors;
 	}
-		
+
 	private Point getWhat3WordsCoordinates(String w3wAddress) throws UnexpectedHTTPResponseException {
 		String w3wData = getResourceAsString(String.format("%s:%s/words/%s/details.json", serverURL, port, w3wAddress.replace('.', '/')));
 		var jsonObj = new Gson().fromJson(w3wData, JsonObject.class);

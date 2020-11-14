@@ -53,11 +53,8 @@ public class App {
     	
 
     	
-//    	while(true) {
     		fly(webserver, nfzs);
-//    	}
     	
-//    	var noFlyZoneChecker = new NoFlyZoneChecker(nfzs);
 //    	
 //    	var pilot = new Pilot(new Drone(startPoint, sensors, noFlyZoneChecker));
 //    	
@@ -199,44 +196,4 @@ public class App {
 	    System.out.println(avg/count);
     }
     
-    // greedy average - 103.07250341997263
-    // two opt without break - 89.30232558139535
-    // two opt with break - 88.88098495212039
-    
-//    private void helper() throws IOException {
-//		var web = new Webserver("http://localhost:80");
-//		
-//    	var nfzs = web.getNoFlyZones();    
-//    	var nfzc = new NoFlyZoneChecker(nfzs);
-//    	
-//    	for (int y = 2020; y <= 2021; y++) {
-//    		for (int m = 1; m <= 12; m++) {
-//    			for (int d = 1; d <= 31; d++) {
-//    				
-//    				HashMap<Point, SensorData> sensors;
-//    				
-//    				try {
-//    					sensors = web.getSensorData(String.format("%02d", d), String.format("%02d", m), Integer.toString(y));
-//    				} catch (FileNotFoundException e) {
-//    					continue;
-//    				}
-//    				
-//    				var drone = new Drone(Point.fromLngLat(-3.1878, 55.9444), sensors, nfzc);
-//    							
-//    				var test = new DronePilot(drone, sensors, nfzc);
-//    				
-//    				var path = test.followPath(test.greedyPlan());
-//    				
-//    				var gjg = new GeojsonGenerator(path, sensors, nfzs);
-//    				
-//    				int count = drone.getTimesMoved();
-//    				
-//    				System.out.println(count);
-//    				if (true) {
-//    					System.out.println(gjg.generateMap());
-//    				}					
-//    			}
-//    		}
-//    	}
-//    }
 }

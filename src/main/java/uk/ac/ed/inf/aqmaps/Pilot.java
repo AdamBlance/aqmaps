@@ -36,11 +36,11 @@ public class Pilot {
 		path.add(drone.getPosition());
 	}
 	
-	public boolean followRoute(List<Waypoint> route) {
-		createSensorReports(route);
+	public boolean followRoute(List<Waypoint> waypoints) {
+		createSensorReports(waypoints);
 		var start = new Waypoint(drone.getPosition());
 		
-		for (var waypoint : route) {
+		for (var waypoint : waypoints) {
 			boolean arrived = navigateTowards(waypoint);
 			if (!arrived) {
 				return false;
@@ -102,7 +102,6 @@ public class Pilot {
 					newPosition.longitude(),
 					newPosition.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
-			
 		}
 		return arrived;
 	}
@@ -123,6 +122,7 @@ public class Pilot {
 		return log;
 	}
 	
+	// make waypoint
 	private Optional<Integer> nextBearing(Point target) {
 		// Return the next pre-computed bearing if it exists
 		if (!precomputedBearings.isEmpty()) {
@@ -139,7 +139,7 @@ public class Pilot {
 		// Finally, if both fail, attempt to find a path around the obstruction
 		var pathToTake = computeLegalPath(target);
 		if (!pathToTake.isEmpty()) {
-			// Add the path to the precomputed queue
+			// Add the path to the pre-computed queue
 			precomputedBearings.addAll(pathToTake);
 			return Optional.of(precomputedBearings.poll());	
 		}
@@ -147,7 +147,6 @@ public class Pilot {
 		// If all this fails, we're stuck
 		return Optional.empty();
 	}
-	
 	
 	private List<Integer> computeLegalPath(Point target) {
 		var CWBranch = new SearchBranch(target, true);

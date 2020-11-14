@@ -9,7 +9,6 @@ public class PointUtils {
 		return Math.sqrt(Math.pow(a.longitude() - b.longitude(), 2) + Math.pow(a.latitude() - b.latitude(), 2));
 	}
 	
-	// TODO: Look into this breaking when the origin and destination are the same
 	// Get the bearing you take to go from origin to destination rounded to nearest 10
 	public static int mostDirectBearing(Point origin, Point destination) {	
 		double latDist = destination.latitude() - origin.latitude();
@@ -22,17 +21,12 @@ public class PointUtils {
 	
 	// Returns the point you would arrive at if moving distance from position with bearing
 	public static Point moveDestination(Point position, double distance, int bearing) {
-		
-		if (bearing % 10 == 0 && bearing >= 0 && bearing <= 350) {
-			double rad = Math.toRadians(bearing);
-			var newPosition = Point.fromLngLat(
-					position.longitude() + distance*Math.cos(rad),
-					position.latitude() + distance*Math.sin(rad));
-					
-			return newPosition;
-		} else {
-			throw new IllegalArgumentException("Invalid bearing - must a multiple of 10 between 0-350.");
-		}	
+		double rad = Math.toRadians(bearing);
+		var newPosition = Point.fromLngLat(
+				position.longitude() + distance*Math.cos(rad),
+				position.latitude() + distance*Math.sin(rad));
+				
+		return newPosition;
 	}
 
 	// Keeps bearings between 0-350 when adding or subtracting
