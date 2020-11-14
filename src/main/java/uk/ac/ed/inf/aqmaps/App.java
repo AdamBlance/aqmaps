@@ -21,7 +21,6 @@ import com.mapbox.geojson.BoundingBox;
 import com.mapbox.turf.TurfJoins;
 
 
-
 public class App {	
 		
     public static void main( String[] args ) throws IOException, InterruptedException {
@@ -36,8 +35,7 @@ public class App {
     	
     	var startPoint = Point.fromLngLat(startLng, startLat);
     	
-    	var webserver = Webserver.getInstance();
-    	webserver.configure("http://localhost", port);
+    	var webserver = Webserver.getInstanceWithConfig("http://localhost", port);
     	
 //    	var sensors = webserver.getSensorData(day, month, year);
     	

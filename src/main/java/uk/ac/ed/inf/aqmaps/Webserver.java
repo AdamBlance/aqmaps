@@ -18,26 +18,24 @@ import com.mapbox.geojson.Polygon;
 
 public class Webserver {
 	
-	private static Webserver singletonInstance = null;
+	private static Webserver singletonInstance;
 	
-	private String serverURL;
-	private String port;
+	private final String serverURL;
+	private final String port;
 	
 	private final HttpClient client = HttpClient.newHttpClient();
 	private final int MAX_HTTP_REQUEST_ATTEMPTS = 10;
 	
-	// should keep no-fly-zones/buildings consistent
-	
-	public static Webserver getInstance() {
-		if (singletonInstance == null) {
-			singletonInstance = new Webserver();
-		}
-		return singletonInstance;
-	}
-	
-	public void configure(String serverURL, String port) {
+	private Webserver(String serverURL, String port) {
 		this.serverURL = serverURL;
 		this.port = port;
+	}
+	
+	public static Webserver getInstanceWithConfig(String serverURL, String port) {
+		if (singletonInstance == null) {
+			singletonInstance = new Webserver(serverURL, port);
+		}
+		return singletonInstance;
 	}
 	
 	public List<Polygon> getNoFlyZones() throws UnexpectedHTTPResponseException {
