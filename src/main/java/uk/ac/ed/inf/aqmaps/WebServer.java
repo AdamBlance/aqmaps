@@ -88,7 +88,7 @@ public class WebServer {
 				attempts += 1;
 				response = client.send(request, BodyHandlers.ofString());
 				fulfilled = true;
-			} catch (ConnectException e1) {
+			} catch (ConnectException e) {
 				System.out.println(String.format("Fatal error: Unable to connect to %s at port %s. Exiting...", serverURL, port));
 				System.exit(1);
 			} catch (InterruptedException | IOException e) {
@@ -96,14 +96,15 @@ public class WebServer {
 					System.out.println("Fatal error: Exceeded maximum number of request attempts. Exiting...");
 					System.exit(1);
 				} else {
-					System.out.println(String.format("Request failed. Retrying (%s/%s).", attempts, MAX_HTTP_REQUEST_ATTEMPTS));
+					System.out.println(String.format("Request failed. Retrying (%s/%s)...", attempts, MAX_HTTP_REQUEST_ATTEMPTS));
 				}
 			}
 		}
 		if (response.statusCode() == 200) {
 			return response.body();
 		} else {
-			throw new UnexpectedHTTPResponseException("Did not receive HTTP status code 200 (OK). Perhaps your filename is incorrect?");
+			throw new UnexpectedHTTPResponseException(
+					String.format("Fatal error: Did not receive HTTP status code 200 (got %d instead). Perhaps your date is invalid? Exiting...", response.statusCode()));
 		}
 	}
 }

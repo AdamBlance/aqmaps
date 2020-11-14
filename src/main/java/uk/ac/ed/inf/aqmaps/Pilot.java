@@ -99,7 +99,7 @@ public class Pilot {
 			}
 			
 			path.add(newPosition);
-			log.add(String.format("%d,%f,%f,%d,%f,%f,%s",
+			log.add(String.format("%d,%f,%f,%d,%f,%f,%s\n",
 					drone.getTimesMoved(),
 					previousPosition.longitude(),
 					previousPosition.latitude(),
@@ -119,8 +119,8 @@ public class Pilot {
 		return sensorReports;
 	}
 	
-	public List<String> getLog() {
-		return log;
+	public String getLog() {
+		return String.join("", log);
 	}
 	
 	// make waypoint
