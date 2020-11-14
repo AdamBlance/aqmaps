@@ -162,16 +162,16 @@ public class App {
 			    	var route = new FlightPlanner(penis).twoOptPath(startPoint);
 			    	
 			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Waypoint::getPoint).collect(Collectors.toList()))));
-			    				    	
+			    	
 			    	boolean arrived = pilot.followRoute(route);
 
-			    	var gjg = new GeojsonGenerator(pilot.getPath(), pilot.getSensorReports(), nfzs).generateMap();
+			    	var map = FlightMap.generateFromFlightData(pilot.getPath(), pilot.getSensorReports(), nfzs);
 			    	
 
 			    	if (drone.getTimesMoved() >= 150) {
 			    		System.out.println("AHHHHH");
 			    		System.out.println(count);
-			    		System.out.println(gjg);
+			    		System.out.println(map);
 			    		System.out.println(startPoint.toString());
 			    		System.out.println(d);
 			    		System.out.println(m);
