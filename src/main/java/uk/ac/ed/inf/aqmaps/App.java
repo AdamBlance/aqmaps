@@ -159,7 +159,7 @@ public class App {
 			    		penis.add((Waypoint) s);
 			    	}
 			    	
-			    	var route = new FlightPlanner(penis).twoOptPath(startPoint);
+			    	var route = FlightPlanner.twoOptPath(startPoint, penis);
 			    	
 			    	features.add(Feature.fromGeometry(LineString.fromLngLats(route.stream().map(Waypoint::getPoint).collect(Collectors.toList()))));
 			    	

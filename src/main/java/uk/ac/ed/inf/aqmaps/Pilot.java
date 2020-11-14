@@ -98,7 +98,7 @@ public class Pilot {
 					drone.getTimesMoved(),
 					previousPosition.longitude(),
 					previousPosition.latitude(),
-					bearing,
+					bearing.get(),
 					newPosition.longitude(),
 					newPosition.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
