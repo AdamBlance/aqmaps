@@ -21,7 +21,7 @@ public class Drone {
 	}
 
 	public Optional<Point> move(int bearing) {
-		if (outOfMoves()) {
+		if (timesMoved >= MAX_MOVES) {
 			return Optional.empty();
 		}
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
@@ -48,10 +48,6 @@ public class Drone {
 	
 	public int getTimesMoved() {
 		return timesMoved;
-	}
-	
-	private boolean outOfMoves() {
-		return timesMoved >= MAX_MOVES;
 	}
 	
 }

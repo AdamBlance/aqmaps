@@ -16,9 +16,9 @@ import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
-public class Webserver {
+public class WebServer {
 	
-	private static Webserver singletonInstance;
+	private static WebServer singletonInstance;
 	
 	private final String serverURL;
 	private final String port;
@@ -26,14 +26,14 @@ public class Webserver {
 	private final HttpClient client = HttpClient.newHttpClient();
 	private final int MAX_HTTP_REQUEST_ATTEMPTS = 10;
 	
-	private Webserver(String serverURL, String port) {
+	private WebServer(String serverURL, String port) {
 		this.serverURL = serverURL;
 		this.port = port;
 	}
 	
-	public static Webserver getInstanceWithConfig(String serverURL, String port) {
+	public static WebServer getInstanceWithConfig(String serverURL, String port) {
 		if (singletonInstance == null) {
-			singletonInstance = new Webserver(serverURL, port);
+			singletonInstance = new WebServer(serverURL, port);
 		}
 		return singletonInstance;
 	}

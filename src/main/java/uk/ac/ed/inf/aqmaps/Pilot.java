@@ -76,17 +76,22 @@ public class Pilot {
 			
 			var previousPosition = drone.getPosition();
 			
-			var bearing = nextBearing(waypoint);
-			if (bearing.isEmpty()) {
+			var possibleBearing = nextBearing(waypoint);
+			if (possibleBearing.isEmpty()) {
+				System.out.println("Could not find a way around obstruction!");
 				break;
 			}
+			int bearing = possibleBearing.get();
 			
-			drone.move(bearing.get());
-			
-			var newPosition = drone.getPosition();
+			var possibleNewPosition = drone.move(bearing);
+			if (possibleNewPosition.isEmpty()) {
+				System.out.println("Drone has ran out of moves!");
+				break;
+			}
+			var newPosition = possibleNewPosition.get();
 			
 			String w3wLocation = null;
-			if (inRange(waypoint)) {
+			if (distanceBetween(newPosition, waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE) {
 				if (waypoint instanceof Sensor) {
 					w3wLocation = ((Sensor) waypoint).getW3wAddress();
 				}
@@ -98,7 +103,7 @@ public class Pilot {
 					drone.getTimesMoved(),
 					previousPosition.longitude(),
 					previousPosition.latitude(),
-					bearing.get(),
+					bearing,
 					newPosition.longitude(),
 					newPosition.latitude(),
 					w3wLocation == null ? "null" : w3wLocation));
@@ -108,10 +113,6 @@ public class Pilot {
 	
 	public List<Point> getPath() {
 		return path;
-	}
-	
-	private boolean inRange(Waypoint waypoint) {
-		return distanceBetween(drone.getPosition(), waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE;
 	}
 	
 	public HashMap<Sensor, SensorReport> getSensorReports() {

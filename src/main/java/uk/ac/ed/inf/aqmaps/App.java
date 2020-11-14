@@ -35,7 +35,7 @@ public class App {
     	
     	var startPoint = Point.fromLngLat(startLong, startLat);
     	
-    	var webserver = Webserver.getInstanceWithConfig("http://localhost", port);
+    	var webserver = WebServer.getInstanceWithConfig("http://localhost", port);
     	
 //    	var sensors = webserver.getSensorData(day, month, year);
     	
@@ -96,7 +96,7 @@ public class App {
     	writer.close();
     }
     
-    private static void fly(Webserver web, List<Polygon> nfzs) throws IOException, InterruptedException {
+    private static void fly(WebServer web, List<Polygon> nfzs) throws IOException, InterruptedException {
     	
     	double count = 0;
     	double avg = 0;
