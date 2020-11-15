@@ -2,6 +2,8 @@ package uk.ac.ed.inf.aqmaps;
 
 import com.mapbox.geojson.Point;
 
+// Another "struct" type class for representing sensors
+// Extends Waypoint, as sensors are just waypoints that store extra data
 public class Sensor extends Waypoint{
 	
 	private String w3wAddress;

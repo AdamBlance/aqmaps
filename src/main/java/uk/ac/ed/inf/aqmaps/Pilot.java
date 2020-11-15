@@ -78,6 +78,8 @@ public class Pilot {
 		report.setVisited(true);
 	}
 	
+	// Attempts to navigate the drone to the specified waypoint
+	// Returns true if it arrives, false if something happens along the way
 	private boolean navigateTo(Waypoint waypoint) {
 		
 		// This will repeatedly make moves until we have arrived or the drone cannot proceed
@@ -103,8 +105,8 @@ public class Pilot {
 			var newPosition = possibleNewPosition.get();
 			
 			String w3wLocation = null;
-			// If we are in reading distance of the waypoint, then mark arrived
 			if (distanceBetween(newPosition, waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE) {
+				
 				// If the waypoint is a sensor, get its what3words address for logging
 				if (waypoint instanceof Sensor) {
 					w3wLocation = ((Sensor) waypoint).getW3wAddress();
@@ -112,22 +114,24 @@ public class Pilot {
 				arrived = true;
 			}
 			
-			// Update the path that the drone has taken
-			path.add(newPosition);
-			// Create flightpath-*.txt line for this move
-			log.add(String.format("%d,%f,%f,%d,%f,%f,%s\n",
-					drone.getTimesMoved(),
-					previousPosition.longitude(),
-					previousPosition.latitude(),
-					bearing,
-					newPosition.longitude(),
-					newPosition.latitude(),
-					w3wLocation == null ? "null" : w3wLocation));
+			logMove(previousPosition, bearing, newPosition, w3wLocation);
 		}
 		return arrived;
 	}
 	
-
+	private void logMove(Point previousPosition, int bearing, Point newPosition, String w3wLocation) {
+		// Update the path that the drone has taken
+		path.add(newPosition);
+		// Create flightpath-*.txt line for this move
+		log.add(String.format("%d,%f,%f,%d,%f,%f,%s\n",
+				drone.getTimesMoved(),
+				previousPosition.longitude(),
+				previousPosition.latitude(),
+				bearing,
+				newPosition.longitude(),
+				newPosition.latitude(),
+				w3wLocation == null ? "null" : w3wLocation));
+	}
 	
 	// Determines the next bearing that the drone should take
 	// Will return an empty optional object if we can't find any legal way to move
@@ -308,26 +312,29 @@ public class Pilot {
 		}
 	}
 	
+	// Inner class implementing an A*-type algorithm for navigating around obstructions
 	private static class SearchBranch {
 		
-		double heuristic = 0;
-		int moveCount = 0;
-		Point branchHead;
-		boolean stuck = false;
-		Point target;
-		int step;
-		List<Integer> branchDirections = new ArrayList<>();
+		
+		double heuristic = 0;        // Distance travelled + euclidean distance to goal
+		double branchLength = 0;     // Length of branch so far
+		Point branchHead;            // Head of the branch so far
+		boolean stuck = false;       // Whether we cannot explore any further
+		Point goal;                  // Where we're trying to get
+		int step;                    // Bearing interval that we check for legal moves with
+		
+		List<Integer> branchDirections = new ArrayList<>();  // Stores the bearings the branch has taken so far
 		NoFlyZoneChecker noFlyZoneChecker;
 		
-		public SearchBranch(Point startPoint, Waypoint target, boolean clockwise, NoFlyZoneChecker noFlyZoneChecker) {
+		public SearchBranch(Point startPoint, Waypoint goal, boolean clockwise, NoFlyZoneChecker noFlyZoneChecker) {
 			this.branchHead = startPoint;
 			step = clockwise ? -10 : 10;
-			this.target = target.getPoint();
+			this.goal = goal.getPoint();
 			this.noFlyZoneChecker = noFlyZoneChecker;
 		}
 		
 		public void explore() {
-			int mostDirectBearing = mostDirectBearing(branchHead, target);
+			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrack;
 			if (branchDirections.isEmpty()) {
 				backtrack = mostDirectBearing;
@@ -340,12 +347,12 @@ public class Pilot {
 				var newBearing = legalBearing.get();
 				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
 				branchDirections.add(newBearing);
-				moveCount += 1;
-				heuristic = moveCount * Drone.MOVE_DISTANCE + distanceBetween(branchHead, target);
+				branchLength += Drone.MOVE_DISTANCE;
+				heuristic = branchLength+ distanceBetween(branchHead, goal);
 			} else {
 				heuristic = Double.MAX_VALUE;
 				stuck = true;
-			}			
+			}	
 		}
 		
 		private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {			
@@ -360,10 +367,10 @@ public class Pilot {
 		}
 		
 		public boolean isFinished() {
-			if (distanceBetween(branchHead, target) < Drone.SENSOR_READ_DISTANCE) {
+			if (distanceBetween(branchHead, goal) < Drone.SENSOR_READ_DISTANCE) {
 				return true;
 			}
-			int mostDirectBearing = mostDirectBearing(branchHead, target);
+			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrackBearing = mod360(lastBearing() - 180);
 			boolean moveIsLegal = noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing);
 			

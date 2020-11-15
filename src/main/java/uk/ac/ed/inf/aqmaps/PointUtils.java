@@ -2,14 +2,16 @@ package uk.ac.ed.inf.aqmaps;
 
 import com.mapbox.geojson.Point;
 
+// Utility class containing helpful methods for manipulating points
 public class PointUtils {
 	
-	// Distance between two points
+	// Euclidean between two points
 	public static double distanceBetween(Point a, Point b) {
 		return Math.sqrt(Math.pow(a.longitude() - b.longitude(), 2) + Math.pow(a.latitude() - b.latitude(), 2));
 	}
 	
-	// Get the bearing you take to go from origin to destination rounded to nearest 10
+	// Returns the gradient (bearing) of the line between two points
+	// Also rounds the bearing to the nearest 10
 	public static int mostDirectBearing(Point origin, Point destination) {	
 		double latDist = destination.latitude() - origin.latitude();
 		double longDist = destination.longitude() - origin.longitude();
@@ -29,7 +31,7 @@ public class PointUtils {
 		return newPosition;
 	}
 
-	// Keeps bearings between 0-350 when adding or subtracting
+	// Keeps bearings between 0-350
 	public static int mod360(int bearing) {
 		return Math.floorMod(bearing, 360);
 	}
