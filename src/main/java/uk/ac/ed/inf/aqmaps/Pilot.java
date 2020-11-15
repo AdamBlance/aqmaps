@@ -22,11 +22,17 @@ public class Pilot {
 
 	private final Drone drone;
 	
-	private List<Point> path = new ArrayList<>();
-	private List<String> log = new ArrayList<>();
-	private HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
+	// Stores each line of our flightpath-*.txt file for writing later 
+	private final List<String> log = new ArrayList<>();
 	
-	private Queue<Integer> precomputedBearings = new LinkedList<>();
+	// List of points where the drone has been (for readings-*.geojson)
+	private final List<Point> path = new ArrayList<>();
+	
+	// Map with sensors as keys and reports as values
+	// This is where we "record" sensor readings (more info in report)
+	private final HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
+	
+	private final Queue<Integer> precomputedBearings = new LinkedList<>();
 	
 	private final NoFlyZoneChecker noFlyZoneChecker;
 		
@@ -36,12 +42,14 @@ public class Pilot {
 		path.add(drone.getPosition());
 	}
 	
+	// Given a list of waypoints, this will attempt to navigate the drone to each in order
+	// Returns true if successful, false if the drone runs out of moves or gets stuck
 	public boolean followRoute(List<Waypoint> waypoints) {
 		createSensorReports(waypoints);
 		var start = new Waypoint(drone.getPosition());
 		
 		for (var waypoint : waypoints) {
-			boolean arrived = navigateTowards(waypoint);
+			boolean arrived = navigateTo(waypoint);
 			if (!arrived) {
 				return false;
 			}
@@ -49,9 +57,10 @@ public class Pilot {
 				readSensorAndRecordReading((Sensor) waypoint);
 			}
 		}
-		return navigateTowards(start);  // True if we make it back, false if we don't.
+		return navigateTo(start);  // True if we make it back, false if we don't.
 	}
 	
+	// Creates a report for each sensor initially marking them as unvisited
 	private void createSensorReports(List<Waypoint> waypoints) {
 		for (var waypoint : waypoints) {
 			if (waypoint instanceof Sensor) {
@@ -69,13 +78,15 @@ public class Pilot {
 		report.setVisited(true);
 	}
 	
-	private boolean navigateTowards(Waypoint waypoint) {
+	private boolean navigateTo(Waypoint waypoint) {
 		
+		// This will repeatedly make moves until we have arrived or the drone cannot proceed
 		boolean arrived = false;
 		while (!arrived) {
 			
 			var previousPosition = drone.getPosition();
 			
+			// Determine the best bearing to take next
 			var possibleBearing = nextBearing(waypoint);
 			if (possibleBearing.isEmpty()) {
 				System.out.println("Could not find a way around obstruction!");
@@ -83,6 +94,7 @@ public class Pilot {
 			}
 			int bearing = possibleBearing.get();
 			
+			// Try to move the drone with bearing
 			var possibleNewPosition = drone.move(bearing);
 			if (possibleNewPosition.isEmpty()) {
 				System.out.println("Drone has ran out of moves!");
@@ -91,14 +103,18 @@ public class Pilot {
 			var newPosition = possibleNewPosition.get();
 			
 			String w3wLocation = null;
+			// If we are in reading distance of the waypoint, then mark arrived
 			if (distanceBetween(newPosition, waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE) {
+				// If the waypoint is a sensor, get its what3words address for logging
 				if (waypoint instanceof Sensor) {
 					w3wLocation = ((Sensor) waypoint).getW3wAddress();
 				}
 				arrived = true;
 			}
 			
+			// Update the path that the drone has taken
 			path.add(newPosition);
+			// Create flightpath-*.txt line for this move
 			log.add(String.format("%d,%f,%f,%d,%f,%f,%s\n",
 					drone.getTimesMoved(),
 					previousPosition.longitude(),
@@ -111,19 +127,10 @@ public class Pilot {
 		return arrived;
 	}
 	
-	public List<Point> getPath() {
-		return path;
-	}
+
 	
-	public HashMap<Sensor, SensorReport> getSensorReports() {
-		return sensorReports;
-	}
-	
-	public String getLog() {
-		return String.join("", log);
-	}
-	
-	// make waypoint
+	// Determines the next bearing that the drone should take
+	// Will return an empty optional object if we can't find any legal way to move
 	private Optional<Integer> nextBearing(Waypoint waypoint) {
 		// Return the next pre-computed bearing if it exists
 		if (!precomputedBearings.isEmpty()) {
@@ -149,11 +156,18 @@ public class Pilot {
 		return Optional.empty();
 	}
 	
+	// Returns a list of bearings, that if taken, will move the drone around an obstruction
+	// This will return an empty list if we can't find any path around the obstruction
 	private List<Integer> computeLegalPath(Waypoint waypoint) {
 		var startPoint = drone.getPosition();
+		// Creates two search branches (clockwise and anti-clockwise)
+		// CWBranch and ACWBranch explore clockwise and anti-clockwise around the obstruction respectively 
 		var CWBranch = new SearchBranch(startPoint, waypoint, true, noFlyZoneChecker);
 		var ACWBranch = new SearchBranch(startPoint, waypoint, false, noFlyZoneChecker);
+		
+		// Repeat until we find a valid path or both paths get stuck
 		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
+			// At each step, pick the branch with the lowest heuristic (this is the A* min-heap step but with only two branches)
 			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
 			shortestBranch.explore();
 			if (shortestBranch.isFinished()) {
@@ -163,9 +177,11 @@ public class Pilot {
 		return new ArrayList<Integer>();
 	}
 	
+	// Useful inner class for determining which moves are legal and which are not
 	private static class NoFlyZoneChecker {
 
 		private BoundingBox droneConfinementArea;
+		
 		private HashMap<Polygon, Polygon> boundariesWithNoFlyZones = new HashMap<>();
 		
 		public NoFlyZoneChecker(List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
@@ -269,6 +285,7 @@ public class Pilot {
 				var polyBound = Polygon.fromLngLats(new ArrayList<>(Arrays.asList(points)), boundingBox);
 				boundariesWithNoFlyZones.put(polyBound, zone);
 			}
+			
 		}
 		
 		// This takes two points that define a line segment and returns the vector
@@ -372,5 +389,17 @@ public class Pilot {
 		public boolean isStuck() {
 			return stuck;
 		}
+	}
+	
+	public List<Point> getPath() {
+		return path;
+	}
+	
+	public HashMap<Sensor, SensorReport> getSensorReports() {
+		return sensorReports;
+	}
+	
+	public String getLog() {
+		return String.join("", log);
 	}
 }

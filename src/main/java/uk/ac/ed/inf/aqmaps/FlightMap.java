@@ -8,7 +8,6 @@ import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
-import com.mapbox.geojson.Polygon;
 
 public class FlightMap {
 	
@@ -16,7 +15,7 @@ public class FlightMap {
 	private static final String GREY = "#aaaaaa";
 	private static final String BLACK = "#000000";
 	
-	public static String generateFromFlightData(List<Point> flightpath, HashMap<Sensor, SensorReport> sensorReports, List<Polygon> nfzs) {
+	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, SensorReport> sensorReports) {
 		
 		var markerFeatures = createMarkerFeatures(sensorReports);
 		var flightpathFeature = Feature.fromGeometry(LineString.fromLngLats(flightpath));
@@ -25,11 +24,7 @@ public class FlightMap {
 		allMapFeatures.addAll(markerFeatures);
 		allMapFeatures.add(flightpathFeature);
 		
-		for (var p : nfzs) {
-			allMapFeatures.add(Feature.fromGeometry(p));
-		}
-		
-		return FeatureCollection.fromFeatures(allMapFeatures).toJson();
+		return FeatureCollection.fromFeatures(allMapFeatures);
 	}
 	
 	private static List<Feature> createMarkerFeatures(HashMap<Sensor, SensorReport> sensorReports) {
