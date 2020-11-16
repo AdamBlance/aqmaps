@@ -6,9 +6,9 @@ import com.mapbox.geojson.Point;
 // Extends Waypoint, as sensors are just waypoints that store extra data
 public class Sensor extends Waypoint{
 	
-	private String w3wAddress;
-	private double battery;
-	private double reading;
+	private final String w3wAddress;
+	private final double battery;
+	private final double reading;
 	
 	public Sensor(Point point, String w3wAddress, double battery, double reading) {
 		super(point);
