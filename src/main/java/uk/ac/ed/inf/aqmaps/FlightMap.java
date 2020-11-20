@@ -18,11 +18,16 @@ public class FlightMap {
 	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, SensorReport> sensorReports) {
 		
 		var markerFeatures = createMarkerFeatures(sensorReports);
+		
 		var flightpathFeature = Feature.fromGeometry(LineString.fromLngLats(flightpath));
 		
 		var allMapFeatures = new ArrayList<Feature>();
 		allMapFeatures.addAll(markerFeatures);
-		allMapFeatures.add(flightpathFeature);
+		if (flightpath.size() >= 2) {
+			allMapFeatures.add(flightpathFeature);
+		} else if (flightpath.size() == 1) {
+			allMapFeatures.add(Feature.fromGeometry(flightpath.get(0)));
+		}
 		
 		return FeatureCollection.fromFeatures(allMapFeatures);
 	}

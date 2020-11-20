@@ -148,6 +148,8 @@ public class Pilot {
 			return Optional.of(mostDirectBearing);
 		}
 		
+		System.out.println(drone.getPosition().toJson());
+		
 		// Finally, if both fail, attempt to find a path around the obstruction
 		var pathToTake = computeLegalPath(waypoint);
 		if (!pathToTake.isEmpty()) {
@@ -155,6 +157,8 @@ public class Pilot {
 			precomputedBearings.addAll(pathToTake);
 			return Optional.of(precomputedBearings.poll());	
 		}
+		
+		
 		
 		// If all this fails, we're stuck
 		return Optional.empty();
@@ -197,6 +201,7 @@ public class Pilot {
 		public boolean isMoveLegal(Point origin, int bearing) {
 			var destination = moveDestination(origin, Drone.MOVE_DISTANCE, bearing);
 			if (!pointStrictlyInsideBoundingBox(destination, droneConfinementArea)) {
+				System.out.println("moving outside the bound");
 				return false;
 			}
 
@@ -328,7 +333,7 @@ public class Pilot {
 		
 		public SearchBranch(Point startPoint, Waypoint goal, boolean clockwise, NoFlyZoneChecker noFlyZoneChecker) {
 			this.branchHead = startPoint;
-			step = clockwise ? -10 : 10;
+			step = clockwise ? 10 : -10;
 			this.goal = goal.getPoint();
 			this.noFlyZoneChecker = noFlyZoneChecker;
 		}
@@ -337,9 +342,12 @@ public class Pilot {
 			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrack;
 			if (branchDirections.isEmpty()) {
-				backtrack = mostDirectBearing;
+				backtrack = mod360(mostDirectBearing - 180);
+				System.out.println(backtrack);
+				System.out.println("first move");
 			} else {
 				backtrack = mod360(lastBearing() - 180);
+				System.out.println("not first");
 			}
 			
 			var legalBearing = bearingScan(branchHead, mostDirectBearing, step, backtrack);
@@ -357,7 +365,9 @@ public class Pilot {
 		
 		private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {			
 			int bearing = mod360(startBearing + offset);
+			System.out.println(startBearing);
 			while (bearing != limitBearing) {
+				System.out.println(bearing);
 				if (noFlyZoneChecker.isMoveLegal(position, bearing)) {
 					 return Optional.of(bearing);
 				 }
@@ -367,6 +377,12 @@ public class Pilot {
 		}
 		
 		public boolean isFinished() {
+			if (stuck) {
+				System.out.println("stuck!");
+				return false;
+			} else {
+				System.out.println("not stuck!");
+			}
 			if (distanceBetween(branchHead, goal) < Drone.SENSOR_READ_DISTANCE) {
 				return true;
 			}

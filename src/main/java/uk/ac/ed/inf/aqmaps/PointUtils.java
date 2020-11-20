@@ -2,6 +2,7 @@ package uk.ac.ed.inf.aqmaps;
 
 import com.mapbox.geojson.Point;
 
+
 // Utility class containing helpful methods for manipulating points
 public class PointUtils {
 	

@@ -19,8 +19,8 @@ public class App {
 	// Dimensions of bounding box
 	private static final double NORTH_LATITUDE = 55.946233;
 	private static final double SOUTH_LATITUDE = 55.942617;
-	private static final double WEST_LONGITUDE = -3.184319;
-	private static final double EAST_LONGITUDE = -3.192473;
+	private static final double EAST_LONGITUDE = -3.184319;
+	private static final double WEST_LONGITUDE = -3.192473;
 	
 	private static final boolean INCLUDE_NO_FLY_ZONES_IN_MAP = true;
 	
@@ -55,6 +55,8 @@ public class App {
     	var startPoint = Point.fromLngLat(startLong, startLat);
     	var route = FlightPlanner.twoOptPath(startPoint, waypoints);
     	
+//    	System.out.println();
+    	
     	// Defines the area that the drone cannot leave
     	var droneConfinementArea = BoundingBox.fromLngLats(WEST_LONGITUDE, SOUTH_LATITUDE, EAST_LONGITUDE, NORTH_LATITUDE);
     	
@@ -69,7 +71,7 @@ public class App {
     	if (!completed) {
     		System.out.println("Did not manage to return within 150 moves. Map and log will still be written to file.");
     	}
-    	
+    	    	
     	// Generates our geojson output map from the data we've gathered
     	var map = FlightMap.generateFromFlightData(pilot.getPath(), pilot.getSensorReports());
     	
