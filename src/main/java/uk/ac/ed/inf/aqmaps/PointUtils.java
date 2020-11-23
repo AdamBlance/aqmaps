@@ -1,5 +1,6 @@
 package uk.ac.ed.inf.aqmaps;
 
+import com.mapbox.geojson.BoundingBox;
 import com.mapbox.geojson.Point;
 
 
@@ -32,6 +33,13 @@ public class PointUtils {
 		return newPosition;
 	}
 
+	public static boolean pointStrictlyInsideBoundingBox(Point point, BoundingBox bound) {
+		var lng = point.longitude();
+		var lat = point.latitude();
+		return lng > bound.west() && lng < bound.east() 
+				&& lat > bound.south() && lat < bound.north(); 
+	}
+	
 	// Keeps bearings between 0-350
 	public static int mod360(int bearing) {
 		return Math.floorMod(bearing, 360);

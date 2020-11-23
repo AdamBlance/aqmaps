@@ -4,6 +4,7 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
+import static uk.ac.ed.inf.aqmaps.PointUtils.pointStrictlyInsideBoundingBox;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,7 +40,6 @@ public class Pilot {
 	public Pilot(Drone drone, List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 		this.drone = drone;
 		this.noFlyZoneChecker = new NoFlyZoneChecker(noFlyZones, droneConfinementArea);
-		path.add(drone.getPosition());
 	}
 	
 	// Given a list of waypoints, this will attempt to navigate the drone to each in order
@@ -245,13 +245,6 @@ public class Pilot {
 			return false;
 		}
 		
-		private static boolean pointStrictlyInsideBoundingBox(Point point, BoundingBox bound) {
-			var lng = point.longitude();
-			var lat = point.latitude();
-			return lng > bound.west() && lng < bound.east() 
-					&& lat > bound.south() && lat < bound.north(); 
-		}
-		
 		private void calculateBoundaries(List<Polygon> noFlyZones) {
 			for (var zone : noFlyZones) {
 				double minLong = 1000; 
@@ -321,12 +314,11 @@ public class Pilot {
 	private static class SearchBranch {
 		
 		
-		double heuristic = 0;        // Distance travelled + euclidean distance to goal
-		double branchLength = 0;     // Length of branch so far
-		Point branchHead;            // Head of the branch so far
-		boolean stuck = false;       // Whether we cannot explore any further
-		Point goal;                  // Where we're trying to get
-		int step;                    // Bearing interval that we check for legal moves with
+		private double branchLength = 0;     // Length of branch so far
+		private Point branchHead;            // Head of the branch so far
+		private boolean stuck = false;       // Whether we cannot explore any further
+		private final Point goal;            // Where we're trying to get
+		private final int step;              // Bearing interval that we check for legal moves with
 		
 		List<Integer> branchDirections = new ArrayList<>();  // Stores the bearings the branch has taken so far
 		NoFlyZoneChecker noFlyZoneChecker;
@@ -338,11 +330,13 @@ public class Pilot {
 			this.noFlyZoneChecker = noFlyZoneChecker;
 		}
 		
+		// I mean actually, you could do something that lets you enter a crevice once, then puts you back out or something
+		
 		public void explore() {
 			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrack;
 			if (branchDirections.isEmpty()) {
-				backtrack = mod360(mostDirectBearing - 180);
+				backtrack = mod360(mostDirectBearing - 180);  // not good in certain circumstances, maybe don't set a limit on the first move  imagine you start in here |_| trying to go down, you need to double back
 				System.out.println(backtrack);
 				System.out.println("first move");
 			} else {
@@ -356,15 +350,13 @@ public class Pilot {
 				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
 				branchDirections.add(newBearing);
 				branchLength += Drone.MOVE_DISTANCE;
-				heuristic = branchLength+ distanceBetween(branchHead, goal);
 			} else {
-				heuristic = Double.MAX_VALUE;
 				stuck = true;
 			}	
 		}
 		
 		private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {			
-			int bearing = mod360(startBearing + offset);
+			int bearing = startBearing;
 			System.out.println(startBearing);
 			while (bearing != limitBearing) {
 				System.out.println(bearing);
@@ -402,7 +394,7 @@ public class Pilot {
 		}
 		
 		public double getHeuristic() {
-			return heuristic;
+			return stuck ? Double.MAX_VALUE : branchLength + distanceBetween(branchHead, goal);
 		}
 		
 		public List<Integer> getBranchDirections() {

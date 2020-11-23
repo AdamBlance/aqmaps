@@ -13,6 +13,7 @@ import com.mapbox.geojson.BoundingBox;
 import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.pointStrictlyInsideBoundingBox;
 
 public class App {	
 	
@@ -30,7 +31,7 @@ public class App {
     	var year = args[2];
     	var startLat = Double.parseDouble(args[3]);
     	var startLong = Double.parseDouble(args[4]);
-    	// int seed = Integer.parseInt(args[5]);
+//    	int seed = Integer.parseInt(args[5]);
     	var port = args[6];
     	
     	var webServer = WebServer.getInstanceWithConfig("http://localhost", port);
@@ -45,7 +46,7 @@ public class App {
     		System.out.println(e.getMessage());
     		System.exit(1);
     	}
-    	    	
+
     	// Casts from Sensor (subclass) to Waypoint (superclass) for FlightPlanner
     	List<Waypoint> waypoints = sensors.stream()
     			.map(sensor -> (Waypoint) sensor)
@@ -54,11 +55,14 @@ public class App {
     	// Plans an efficient through all the sensors, taking into account where the drone should start and end
     	var startPoint = Point.fromLngLat(startLong, startLat);
     	var route = FlightPlanner.twoOptPath(startPoint, waypoints);
-    	
-//    	System.out.println();
-    	
+    	    	
     	// Defines the area that the drone cannot leave
     	var droneConfinementArea = BoundingBox.fromLngLats(WEST_LONGITUDE, SOUTH_LATITUDE, EAST_LONGITUDE, NORTH_LATITUDE);
+    	
+    	if (!pointStrictlyInsideBoundingBox(startPoint, droneConfinementArea)) {
+    		System.out.println(String.format("Fatal error: Cannot start navigation at %f, %f (outside drone confinement area). Exiting...", startLat, startLong));
+    		System.exit(1);
+    	}
     	
     	// Creates drone with the specified initial position
     	var drone = new Drone(startPoint);
