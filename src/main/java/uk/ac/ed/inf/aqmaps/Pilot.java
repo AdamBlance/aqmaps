@@ -97,12 +97,12 @@ public class Pilot {
 			int bearing = possibleBearing.get();
 			
 			// Try to move the drone with bearing
-			var possibleNewPosition = drone.move(bearing);
-			if (possibleNewPosition.isEmpty()) {
+			boolean moved = drone.move(bearing);
+			if (!moved) {
 				System.out.println("Drone has ran out of moves!");
 				break;
 			}
-			var newPosition = possibleNewPosition.get();
+			var newPosition = drone.getPosition();
 			
 			String w3wLocation = null;
 			if (distanceBetween(newPosition, waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE) {
@@ -313,14 +313,15 @@ public class Pilot {
 	// Inner class implementing an A*-type algorithm for navigating around obstructions
 	private static class SearchBranch {
 		
+		private Point branchHead;            // Head of the branch so far
+		private final Point goal;            // Where we're trying to get to
 		
 		private double branchLength = 0;     // Length of branch so far
-		private Point branchHead;            // Head of the branch so far
 		private boolean stuck = false;       // Whether we cannot explore any further
-		private final Point goal;            // Where we're trying to get
+
 		private final int step;              // Bearing interval that we check for legal moves with
 		
-		List<Integer> branchDirections = new ArrayList<>();  // Stores the bearings the branch has taken so far
+		List<Integer> bearingsTaken = new ArrayList<>();  // Stores the bearings the branch has taken so far
 		NoFlyZoneChecker noFlyZoneChecker;
 		
 		public SearchBranch(Point startPoint, Waypoint goal, boolean clockwise, NoFlyZoneChecker noFlyZoneChecker) {
@@ -335,20 +336,17 @@ public class Pilot {
 		public void explore() {
 			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrack;
-			if (branchDirections.isEmpty()) {
+			if (bearingsTaken.isEmpty()) {
 				backtrack = mod360(mostDirectBearing - 180);  // not good in certain circumstances, maybe don't set a limit on the first move  imagine you start in here |_| trying to go down, you need to double back
-				System.out.println(backtrack);
-				System.out.println("first move");
 			} else {
 				backtrack = mod360(lastBearing() - 180);
-				System.out.println("not first");
 			}
 			
 			var legalBearing = bearingScan(branchHead, mostDirectBearing, step, backtrack);
 			if (legalBearing.isPresent()) {
 				var newBearing = legalBearing.get();
 				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
-				branchDirections.add(newBearing);
+				bearingsTaken.add(newBearing);
 				branchLength += Drone.MOVE_DISTANCE;
 			} else {
 				stuck = true;
@@ -370,10 +368,8 @@ public class Pilot {
 		
 		public boolean isFinished() {
 			if (stuck) {
-				System.out.println("stuck!");
 				return false;
 			} else {
-				System.out.println("not stuck!");
 			}
 			if (distanceBetween(branchHead, goal) < Drone.SENSOR_READ_DISTANCE) {
 				return true;
@@ -383,14 +379,14 @@ public class Pilot {
 			boolean moveIsLegal = noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing);
 			
 			if (moveIsLegal && (mostDirectBearing != backtrackBearing)) {
-				branchDirections.add(mostDirectBearing);
+				bearingsTaken.add(mostDirectBearing);
 				return true;
 			}
 			return false;
 		}
 		
 		private int lastBearing() {
-			return branchDirections.get(branchDirections.size() - 1);
+			return bearingsTaken.get(bearingsTaken.size() - 1);
 		}
 		
 		public double getHeuristic() {
@@ -398,7 +394,7 @@ public class Pilot {
 		}
 		
 		public List<Integer> getBranchDirections() {
-			return branchDirections;
+			return bearingsTaken;
 		}
 		
 		public boolean isStuck() {

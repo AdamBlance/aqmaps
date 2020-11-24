@@ -23,14 +23,14 @@ public class Drone {
 
 	// Tries to move and returns Optional of the new position
 	// Will return an empty optional if the drone is out of moves
-	public Optional<Point> move(int bearing) {
+	public boolean move(int bearing) {
 		if (timesMoved >= MAX_MOVES) {
-			return Optional.empty();
+			return false;
 		}
 		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
 		position = destination;
 		timesMoved += 1;
-		return Optional.of(position);
+		return true;
 	}
 
 	// Tries to read the pollution sensor specified
