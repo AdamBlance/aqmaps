@@ -31,7 +31,7 @@ public class Pilot {
 	
 	// Map with sensors as keys and reports as values
 	// This is where we "record" sensor readings (more info in report)
-	private final HashMap<Sensor, SensorReport> sensorReports = new HashMap<>();
+	private final HashMap<Sensor, Boolean> sensorVisitedStatus = new HashMap<>();
 	
 	private final Queue<Integer> precomputedBearings = new LinkedList<>();
 	
@@ -40,12 +40,13 @@ public class Pilot {
 	public Pilot(Drone drone, List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 		this.drone = drone;
 		this.noFlyZoneChecker = new NoFlyZoneChecker(noFlyZones, droneConfinementArea);
+		path.add(drone.getPosition());
 	}
 	
 	// Given a list of waypoints, this will attempt to navigate the drone to each in order
 	// Returns true if successful, false if the drone runs out of moves or gets stuck
 	public boolean followRoute(List<Waypoint> waypoints) {
-		createSensorReports(waypoints);
+		markAllSensorsUnvisited(waypoints);
 		var start = new Waypoint(drone.getPosition());
 		
 		for (var waypoint : waypoints) {
@@ -54,28 +55,25 @@ public class Pilot {
 				return false;
 			}
 			if (waypoint instanceof Sensor) {
-				readSensorAndRecordReading((Sensor) waypoint);
+				markVisited((Sensor) waypoint);
 			}
 		}
 		return navigateTo(start);  // True if we make it back, false if we don't.
 	}
 	
 	// Creates a report for each sensor initially marking them as unvisited
-	private void createSensorReports(List<Waypoint> waypoints) {
+	private void markAllSensorsUnvisited(List<Waypoint> waypoints) {
 		for (var waypoint : waypoints) {
 			if (waypoint instanceof Sensor) {
-				sensorReports.put((Sensor) waypoint, new SensorReport(false, false));
+				sensorVisitedStatus.put((Sensor) waypoint, false);
 			}
 		}
 	}
 	
-	private void readSensorAndRecordReading(Sensor sensor) {
+	private void markVisited(Sensor sensor) {
+		// We don't actually save the reading
 		var reading = drone.readSensor(sensor);
-		var report = sensorReports.get(sensor);
-		if (reading.isPresent()) {
-			report.setValid(true);
-		}
-		report.setVisited(true);
+		sensorVisitedStatus.put(sensor, true);
 	}
 	
 	// Attempts to navigate the drone to the specified waypoint
@@ -147,9 +145,7 @@ public class Pilot {
 		if (noFlyZoneChecker.isMoveLegal(dronePos, mostDirectBearing)) {
 			return Optional.of(mostDirectBearing);
 		}
-		
-		System.out.println(drone.getPosition().toJson());
-		
+				
 		// Finally, if both fail, attempt to find a path around the obstruction
 		var pathToTake = computeLegalPath(waypoint);
 		if (!pathToTake.isEmpty()) {
@@ -406,8 +402,8 @@ public class Pilot {
 		return path;
 	}
 	
-	public HashMap<Sensor, SensorReport> getSensorReports() {
-		return sensorReports;
+	public HashMap<Sensor, Boolean> getSensorReports() {
+		return sensorVisitedStatus;
 	}
 	
 	public String getLog() {

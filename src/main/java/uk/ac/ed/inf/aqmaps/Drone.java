@@ -34,19 +34,13 @@ public class Drone {
 	}
 
 	// Tries to read the pollution sensor specified
-	// Will return Optional of the reading, or an empty Optional if the sensor's battery is too low
+	// Will return Optional of the reading
 	public Optional<Double> readSensor(Sensor sensor) {
+		Double reading = null;
 		if (distanceBetween(position, sensor.getPoint()) < SENSOR_READ_DISTANCE) {
-			if (sensor.getBattery() >= 10.0) {
-				return Optional.of(sensor.getReading());
-			} else {
-				return Optional.empty();
-			}
-		} else {
-			// This prevents an invalid program state
-			// Should never happen as pilot is validating the instructions it sends to the drone
-			throw new IllegalStateException("Drone is too far away to read sensor.");
+			reading = sensor.getReading();
 		}
+		return Optional.ofNullable(reading);
 	}
 	
 	public Point getPosition() {

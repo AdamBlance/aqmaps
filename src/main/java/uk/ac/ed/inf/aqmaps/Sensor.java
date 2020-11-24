@@ -14,7 +14,7 @@ public class Sensor extends Waypoint{
 		super(point);
 		this.w3wAddress = w3wAddress;
 		this.battery = battery;
-		this.reading = reading;		
+		this.reading = reading;
 	}
 	
 	public String getW3wAddress() {

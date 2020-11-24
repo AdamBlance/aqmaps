@@ -15,9 +15,9 @@ public class FlightMap {
 	private static final String GREY = "#aaaaaa";
 	private static final String BLACK = "#000000";
 	
-	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, SensorReport> sensorReports) {
+	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, Boolean> sensorVisitedStatus) {
 		
-		var markerFeatures = createMarkerFeatures(sensorReports);
+		var markerFeatures = createMarkerFeatures(sensorVisitedStatus);
 		
 		var flightpathFeature = Feature.fromGeometry(LineString.fromLngLats(flightpath));
 		
@@ -32,11 +32,11 @@ public class FlightMap {
 		return FeatureCollection.fromFeatures(allMapFeatures);
 	}
 	
-	private static List<Feature> createMarkerFeatures(HashMap<Sensor, SensorReport> sensorReports) {
+	private static List<Feature> createMarkerFeatures(HashMap<Sensor, Boolean> sensorReports) {
 		
 		var markerFeatures = new ArrayList<Feature>();
 		for (var sensor: sensorReports.keySet()) {
-			var report = sensorReports.get(sensor);
+			boolean visited = sensorReports.get(sensor);
 			
 			var marker = Feature.fromGeometry(sensor.getPoint());
 //			var circ = Feature.fromGeometry(TurfTransformation.circle(sensor.getPoint(), 0.0002, 20, TurfConstants.UNIT_DEGREES));
@@ -44,10 +44,10 @@ public class FlightMap {
 			
 			// If sensor wasn't visited, make it grey
 			// If reading was invalid, make it black and give it a cross
-			if (!report.isVisited()) {
+			if (!visited) {
 				marker.addStringProperty("rgb-string", GREY);
 				marker.addStringProperty("marker-color", GREY);
-			} else if (!report.isValid()) {
+			} else if (sensor.getBattery() < 10.0) {
 				marker.addStringProperty("rgb-string", BLACK);
 				marker.addStringProperty("marker-color", BLACK);
 				marker.addStringProperty("marker-symbol", "cross");
