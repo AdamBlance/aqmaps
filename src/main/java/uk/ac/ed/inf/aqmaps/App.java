@@ -35,16 +35,15 @@ public class App {
     	var day = args[0];
     	var month = args[1];
     	var year = args[2];
-    	var startLat = Double.parseDouble(args[3]);
-    	var startLong = Double.parseDouble(args[4]);
-    	int seed = Integer.parseInt(args[5]);  // unused
+    	var startPoint = Point.fromLngLat(
+    			Double.parseDouble(args[4]), 
+    			Double.parseDouble(args[3]));
     	var port = args[6];
     	
-    	var startPoint = Point.fromLngLat(startLong, startLat);
     	// Before we do anything, make sure that the provided start position is legal
     	exitIfInvalid(startPoint);
     	// This doesn't check if the start position is inside a no-fly-zone
-    	// If that happens, the drone will just bounce around inside the building until it runs out of moves
+    	// If that happens, the drone will just bounce around inside it until it runs out of moves
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	retrieveRelevantData(day, month, year, port);
@@ -58,6 +57,10 @@ public class App {
     	attemptFlight(pilot, route);
 
     	outputResults(pilot, day, month, year);
+    	
+    	System.out.printf("Drone completed flight in %d/%d moves.", 
+    			drone.getTimesMoved(),
+    			Drone.MAX_MOVES);
     }
     
     private static void exitIfInvalid(Point p) {
@@ -105,13 +108,17 @@ public class App {
     		map = FeatureCollection.fromFeatures(mapFeatures);
     	}
     	
-    	try {
-    		writeFile(String.format("flightpath-%s-%s-%s.txt", day, month, year), pilot.getLog());
-    		writeFile(String.format("readings-%s-%s-%s.geojson", day, month, year), map.toJson());
-    	} catch (IOException e) {
-    		System.out.println("Fatal error: Failed to write output files. Exiting...");
-    		System.exit(1);
-    	}
+//    	var flightpathFname = String.format("flightpath-%s-%s-%s.txt", day, month, year);
+//    	var readingsFname =  String.format("readings-%s-%s-%s.geojson", day, month, year);
+//    	try {
+//    		writeFile(flightpathFname, pilot.getLog());
+//    		writeFile(readingsFname, map.toJson());
+//    	} catch (IOException e) {
+//    		System.out.println("Fatal error: Failed to write output files. Exiting...");
+//    		System.exit(1);
+//    	}
+//    	
+//    	System.out.printf("%s and %s created successfully!", flightpathFname, readingsFname);
     }
     
 	// Writes a string to a file, overwriting any existing file with the same filename
