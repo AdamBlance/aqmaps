@@ -50,9 +50,7 @@ public class FlightPlanner {
 	}
 	
 	private static double pathDifference(List<Waypoint> path, int start, int end) {
-		if (start <= 0 || end >= path.size() - 1) {
-			throw new RuntimeException("Can't change the start or end point");
-		}
+		
 		var beforeStartP = path.get(start - 1).getPoint();
 		var startP = path.get(start).getPoint();	
 		var endP = path.get(end).getPoint();

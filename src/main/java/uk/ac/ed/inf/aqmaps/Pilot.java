@@ -31,7 +31,7 @@ public class Pilot {
 	
 	// Map with sensors as keys and reports as values
 	// This is where we "record" sensor readings (more info in report)
-	private final HashMap<Sensor, Boolean> sensorVisitedStatus = new HashMap<>();
+	private final HashMap<Sensor, Boolean> sensorsVisited = new HashMap<>();
 	
 	private final Queue<Integer> precomputedBearings = new LinkedList<>();
 	
@@ -65,15 +65,14 @@ public class Pilot {
 	private void markAllSensorsUnvisited(List<Waypoint> waypoints) {
 		for (var waypoint : waypoints) {
 			if (waypoint instanceof Sensor) {
-				sensorVisitedStatus.put((Sensor) waypoint, false);
+				sensorsVisited.put((Sensor) waypoint, false);
 			}
 		}
 	}
 	
 	private void markVisited(Sensor sensor) {
-		// We don't actually save the reading
-		var reading = drone.readSensor(sensor);
-		sensorVisitedStatus.put(sensor, true);
+		drone.readSensor(sensor);  // We don't actually store the reading
+		sensorsVisited.put(sensor, true);
 	}
 	
 	// Attempts to navigate the drone to the specified waypoint
@@ -173,7 +172,7 @@ public class Pilot {
 		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
 			// At each step, pick the branch with the lowest heuristic (this is the A* min-heap step but with only two branches)
 			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
-			shortestBranch.explore();
+			shortestBranch.expand();
 			if (shortestBranch.isFinished()) {
 				return shortestBranch.getBranchDirections();
 			}
@@ -312,24 +311,23 @@ public class Pilot {
 		private Point branchHead;            // Head of the branch so far
 		private final Point goal;            // Where we're trying to get to
 		
-		private double branchLength = 0;     // Length of branch so far
 		private boolean stuck = false;       // Whether we cannot explore any further
 
-		private final int step;              // Bearing interval that we check for legal moves with
+		private final boolean clockwise;              // Bearing interval that we check for legal moves with
 		
 		List<Integer> bearingsTaken = new ArrayList<>();  // Stores the bearings the branch has taken so far
 		NoFlyZoneChecker noFlyZoneChecker;
 		
 		public SearchBranch(Point startPoint, Waypoint goal, boolean clockwise, NoFlyZoneChecker noFlyZoneChecker) {
 			this.branchHead = startPoint;
-			step = clockwise ? 10 : -10;
+			this.clockwise = clockwise;
 			this.goal = goal.getPoint();
 			this.noFlyZoneChecker = noFlyZoneChecker;
 		}
 		
 		// I mean actually, you could do something that lets you enter a crevice once, then puts you back out or something
 		
-		public void explore() {
+		public void expand() {
 			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrack;
 			if (bearingsTaken.isEmpty()) {
@@ -338,12 +336,12 @@ public class Pilot {
 				backtrack = mod360(lastBearing() - 180);
 			}
 			
+			int step =  clockwise ? 10 : -10;
 			var legalBearing = bearingScan(branchHead, mostDirectBearing, step, backtrack);
 			if (legalBearing.isPresent()) {
 				var newBearing = legalBearing.get();
 				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
 				bearingsTaken.add(newBearing);
-				branchLength += Drone.MOVE_DISTANCE;
 			} else {
 				stuck = true;
 			}	
@@ -386,7 +384,7 @@ public class Pilot {
 		}
 		
 		public double getHeuristic() {
-			return stuck ? Double.MAX_VALUE : branchLength + distanceBetween(branchHead, goal);
+			return stuck ? Double.MAX_VALUE : (bearingsTaken.size()*Drone.MOVE_DISTANCE) + distanceBetween(branchHead, goal);
 		}
 		
 		public List<Integer> getBranchDirections() {
@@ -402,8 +400,8 @@ public class Pilot {
 		return path;
 	}
 	
-	public HashMap<Sensor, Boolean> getSensorReports() {
-		return sensorVisitedStatus;
+	public HashMap<Sensor, Boolean> getSensorsVisited() {
+		return sensorsVisited;
 	}
 	
 	public String getLog() {

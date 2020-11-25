@@ -39,7 +39,6 @@ public class FlightMap {
 			boolean visited = sensorReports.get(sensor);
 			
 			var marker = Feature.fromGeometry(sensor.getPoint());
-//			var circ = Feature.fromGeometry(TurfTransformation.circle(sensor.getPoint(), 0.0002, 20, TurfConstants.UNIT_DEGREES));
 			marker.addStringProperty("location", sensor.getW3wAddress());
 			
 			// If sensor wasn't visited, make it grey

@@ -14,9 +14,9 @@ public class PointUtils {
 	
 	// Returns the gradient (bearing) of the line between two points
 	// Also rounds the bearing to the nearest 10
-	public static int mostDirectBearing(Point origin, Point destination) {	
-		double latDist = destination.latitude() - origin.latitude();
-		double longDist = destination.longitude() - origin.longitude();
+	public static int mostDirectBearing(Point a, Point b) {	
+		double latDist = b.latitude() - a.latitude();
+		double longDist = b.longitude() - a.longitude();
 		
 		// Gets polar theta, converts to degrees
 		int roundedPolarTheta = (int) Math.round(Math.toDegrees(Math.atan2(latDist, longDist)) / 10.0) * 10;		

@@ -1,7 +1,5 @@
 package uk.ac.ed.inf.aqmaps;
 
-import java.util.Optional;
-
 import com.mapbox.geojson.Point;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
@@ -35,12 +33,14 @@ public class Drone {
 
 	// Tries to read the pollution sensor specified
 	// Will return Optional of the reading
-	public Optional<Double> readSensor(Sensor sensor) {
-		Double reading = null;
+	public double readSensor(Sensor sensor) {
 		if (distanceBetween(position, sensor.getPoint()) < SENSOR_READ_DISTANCE) {
-			reading = sensor.getReading();
+			return sensor.getReading();
+		} else {
+			System.out.println("Fatal error: Drone tried to read sensor that was out of range. Exiting...");
+			System.exit(1);
 		}
-		return Optional.ofNullable(reading);
+		return 0;
 	}
 	
 	public Point getPosition() {

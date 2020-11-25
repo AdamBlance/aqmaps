@@ -40,9 +40,11 @@ public class App {
     	int seed = Integer.parseInt(args[5]);  // unused
     	var port = args[6];
     	
-    	// Before we do anything, make sure that the provided start location is legal
     	var startPoint = Point.fromLngLat(startLong, startLat);
+    	// Before we do anything, make sure that the provided start position is legal
     	exitIfInvalid(startPoint);
+    	// This doesn't check if the start position is inside a no-fly-zone
+    	// If that happens, the drone will just bounce around inside the building until it runs out of moves
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	retrieveRelevantData(day, month, year, port);
@@ -70,8 +72,7 @@ public class App {
     private static void attemptFlight(Pilot pilot, List<Waypoint> route) {
     	boolean completed = pilot.followRoute(route);
     	if (!completed) {
-    		System.out.printf(
-    				"Did not manage to return within %d moves. Map and log will still be generated.", 
+    		System.out.printf("Did not manage to return within %d moves. Map and log will still be generated.", 
     				Drone.MAX_MOVES);
     	}
 	}
@@ -80,7 +81,7 @@ public class App {
     	var webServer = WebServer.getInstanceWithConfig("http://localhost", port);
        	try {
     		var sensors = webServer.getSensorData(day, month, year);
-        	// Casts from Sensor (subclass) to Waypoint (superclass) for FlightPlanner
+        	// Casts from list of Sensor (subclass) to list of Waypoint (superclass) for FlightPlanner which takes the latter
         	waypoints = sensors.stream()
         			.map(sensor -> (Waypoint) sensor)
         			.collect(Collectors.toList());
@@ -92,7 +93,7 @@ public class App {
 	}
 
     private static void outputResults(Pilot pilot, String day, String month, String year) {
-    	var map = FlightMap.generateFromFlightData(pilot.getPath(), pilot.getSensorReports());
+    	var map = FlightMap.generateFromFlightData(pilot.getPath(), pilot.getSensorsVisited());
     	
     	// I could have left this out in my submission but maybe it's helpful to someone
     	if (INCLUDE_NO_FLY_ZONES_IN_MAP) {
