@@ -7,6 +7,7 @@ import com.mapbox.geojson.Point;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 
+
 public class FlightPlanner {
 	
 	public static List<Waypoint> greedyPath(Point start, List<Waypoint> waypoints) {		
@@ -24,7 +25,7 @@ public class FlightPlanner {
 	}
 	
 	public static List<Waypoint> twoOptPath(Point start, List<Waypoint> waypoints) {
-		var startWaypoint = new Waypoint(start);
+		var startWaypoint = new Waypoint(start, true);
 		
 		List<Waypoint> path = new ArrayList<>();
 		path.add(startWaypoint);

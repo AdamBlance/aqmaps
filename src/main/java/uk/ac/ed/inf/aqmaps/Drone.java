@@ -5,6 +5,8 @@ import com.mapbox.geojson.Point;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 
+import static uk.ac.ed.inf.aqmaps.PointUtils.inRange;
+
 public class Drone {
 	
 	private Point position;
@@ -34,7 +36,7 @@ public class Drone {
 	// Tries to read the pollution sensor specified
 	// Will return Optional of the reading
 	public double readSensor(Sensor sensor) {
-		if (distanceBetween(position, sensor.getPoint()) < SENSOR_READ_DISTANCE) {
+		if (inRange(position, sensor)) {
 			return sensor.getReading();
 		} else {
 			System.out.println("Fatal error: Drone tried to read sensor that was out of range. Exiting...");

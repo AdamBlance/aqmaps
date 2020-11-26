@@ -7,6 +7,11 @@ import com.mapbox.geojson.Point;
 // Utility class containing helpful methods for manipulating points
 public class PointUtils {
 	
+	public static boolean inRange(Point a, Waypoint w) {
+		double arrivalDistance = w.isHome() ? 0.0003 : 0.0002;
+		return distanceBetween(a, w.getPoint()) < arrivalDistance;
+	}
+	
 	// Euclidean between two points
 	public static double distanceBetween(Point a, Point b) {
 		return Math.sqrt(Math.pow(a.longitude() - b.longitude(), 2) + Math.pow(a.latitude() - b.latitude(), 2));

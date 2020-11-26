@@ -5,6 +5,7 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 import static uk.ac.ed.inf.aqmaps.PointUtils.pointStrictlyInsideBoundingBox;
+import static uk.ac.ed.inf.aqmaps.PointUtils.inRange;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.Queue;
 
 import com.mapbox.geojson.BoundingBox;
+import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
 
@@ -36,7 +38,7 @@ public class Pilot {
 	private final Queue<Integer> precomputedBearings = new LinkedList<>();
 	
 	private final NoFlyZoneChecker noFlyZoneChecker;
-		
+	
 	public Pilot(Drone drone, List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 		this.drone = drone;
 		this.noFlyZoneChecker = new NoFlyZoneChecker(noFlyZones, droneConfinementArea);
@@ -47,7 +49,7 @@ public class Pilot {
 	// Returns true if successful, false if the drone runs out of moves or gets stuck
 	public boolean followRoute(List<Waypoint> waypoints) {
 		markAllSensorsUnvisited(waypoints);
-		var start = new Waypoint(drone.getPosition());
+		var start = new Waypoint(drone.getPosition(), true);
 		
 		for (var waypoint : waypoints) {
 			boolean arrived = navigateTo(waypoint);
@@ -83,6 +85,8 @@ public class Pilot {
 		boolean arrived = false;
 		while (!arrived) {
 			
+			System.out.println(LineString.fromLngLats(path).toJson());
+			
 			var previousPosition = drone.getPosition();
 			
 			// Determine the best bearing to take next
@@ -99,10 +103,11 @@ public class Pilot {
 				System.out.println("Drone has ran out of moves!");
 				break;
 			}
+			
 			var newPosition = drone.getPosition();
 			
 			String w3wLocation = null;
-			if (distanceBetween(newPosition, waypoint.getPoint()) < Drone.SENSOR_READ_DISTANCE) {
+			if (inRange(newPosition, waypoint)) {
 				
 				// If the waypoint is a sensor, get its what3words address for logging
 				if (waypoint instanceof Sensor) {
@@ -120,7 +125,7 @@ public class Pilot {
 		// Update the path that the drone has taken
 		path.add(newPosition);
 		// Create flightpath-*.txt line for this move
-		log.add(String.format("%d,%f,%f,%d,%f,%f,%s\n",
+		log.add(String.format("%d,%f,%f,%d,%f,%f,%s%n",
 				drone.getTimesMoved(),
 				previousPosition.longitude(),
 				previousPosition.latitude(),
@@ -161,6 +166,30 @@ public class Pilot {
 	
 	// Returns a list of bearings, that if taken, will move the drone around an obstruction
 	// This will return an empty list if we can't find any path around the obstruction
+//	private List<Integer> computeLegalPath(Waypoint waypoint) {
+//		var startPoint = drone.getPosition();
+//		// Creates two search branches (clockwise and anti-clockwise)
+//		// CWBranch and ACWBranch explore clockwise and anti-clockwise around the obstruction respectively 
+//		var CWBranch = new SearchBranch(startPoint, waypoint, true, noFlyZoneChecker);
+//		var ACWBranch = new SearchBranch(startPoint, waypoint, false, noFlyZoneChecker);
+//		
+//		// Repeat until we find a valid path or both paths get stuck
+//		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
+//			// At each step, pick the branch with the lowest heuristic (this is the A* min-heap step but with only two branches)
+//			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
+//			shortestBranch.expand();
+//			if (shortestBranch.isFinished()) {
+//				return shortestBranch.getBranchDirections();
+//			}
+//		}
+//		return new ArrayList<Integer>();
+//	}
+	
+	
+	
+	
+	
+	
 	private List<Integer> computeLegalPath(Waypoint waypoint) {
 		var startPoint = drone.getPosition();
 		// Creates two search branches (clockwise and anti-clockwise)
@@ -168,17 +197,44 @@ public class Pilot {
 		var CWBranch = new SearchBranch(startPoint, waypoint, true, noFlyZoneChecker);
 		var ACWBranch = new SearchBranch(startPoint, waypoint, false, noFlyZoneChecker);
 		
-		// Repeat until we find a valid path or both paths get stuck
-		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
-			// At each step, pick the branch with the lowest heuristic (this is the A* min-heap step but with only two branches)
-			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
-			shortestBranch.expand();
-			if (shortestBranch.isFinished()) {
-				return shortestBranch.getBranchDirections();
+		while (true) {
+			CWBranch.expand();
+			if (CWBranch.isStuck() || CWBranch.isFinished()) {
+				break;
 			}
 		}
-		return new ArrayList<Integer>();
-	}
+		
+		while (true) {
+			ACWBranch.expand();
+			if (ACWBranch.isStuck() || ACWBranch.isFinished()) {
+				break;
+			}
+		}
+		
+		if (CWBranch.isStuck() && ACWBranch.isStuck()) {
+			return new ArrayList<Integer>();
+		} else if (CWBranch.isStuck()) {
+			return ACWBranch.getBranchDirections();
+		} else if (ACWBranch.isStuck()) {
+			return CWBranch.getBranchDirections();
+		}
+		
+		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBranchDirections() : ACWBranch.getBranchDirections();
+		
+		// Repeat until we find a valid path or both paths get stuck
+//		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
+//			// At each step, pick the branch with the lowest heuristic (this is the A* min-heap step but with only two branches)
+//			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
+//			shortestBranch.expand();
+//			if (shortestBranch.isFinished()) {
+//				return shortestBranch.getBranchDirections();
+//			}
+//		}
+//		return new ArrayList<Integer>();
+}
+	
+	
+	
 	
 	// Useful inner class for determining which moves are legal and which are not
 	private static class NoFlyZoneChecker {
@@ -196,7 +252,6 @@ public class Pilot {
 		public boolean isMoveLegal(Point origin, int bearing) {
 			var destination = moveDestination(origin, Drone.MOVE_DISTANCE, bearing);
 			if (!pointStrictlyInsideBoundingBox(destination, droneConfinementArea)) {
-				System.out.println("moving outside the bound");
 				return false;
 			}
 
@@ -309,7 +364,7 @@ public class Pilot {
 	private static class SearchBranch {
 		
 		private Point branchHead;            // Head of the branch so far
-		private final Point goal;            // Where we're trying to get to
+		private final Waypoint goal;            // Where we're trying to get to
 		
 		private boolean stuck = false;       // Whether we cannot explore any further
 
@@ -321,23 +376,57 @@ public class Pilot {
 		public SearchBranch(Point startPoint, Waypoint goal, boolean clockwise, NoFlyZoneChecker noFlyZoneChecker) {
 			this.branchHead = startPoint;
 			this.clockwise = clockwise;
-			this.goal = goal.getPoint();
+			this.goal = goal;  // changing all stuff to use inrange
 			this.noFlyZoneChecker = noFlyZoneChecker;
 		}
 		
 		// I mean actually, you could do something that lets you enter a crevice once, then puts you back out or something
 		
+		
+		//// Okay, so on the first move it is definitely ok to backtrack, because you might be stuck in somewhere
+		// When you're checking if you finished, you definitely can't do that because then you end up in a loop
+		
+		
+		// All right, so when we're expanding the bearing, I think it's okay to have no limit on the check. Like if you had a really weird thing like 
+		/*      X
+		 *      _
+		 *     \ /
+		 */
+		
+		// I can't see an obvious problem and did like 500 tests and it was fine
+		
+		
+		// So now... finishing up
+		
+		// If we know that backtracking will put us in range of the sensor, that is 100% okay and should only really happen if two sensors are overlapping or we starting range of one
+		// Okay, so if we start a new search and move back to the space that we were at before initiating the search, that's also fine, could get us out of weird scenarios
+		
+		// All right, so it's okay to step back to where you were before starting a search
+		// It's okay in a search to move back, but only when you check if you're finished (not in the expand step)
+		
+		// You shouldn't be able to move directly back during an exploration. 
+		
+		// So basically, we make it so that the limit is not set on the first move.
+		// On any move after, the bearing scan limit is set at the last move
+		
+		
 		public void expand() {
-			int mostDirectBearing = mostDirectBearing(branchHead, goal);
-			int backtrack;
-			if (bearingsTaken.isEmpty()) {
-				backtrack = mod360(mostDirectBearing - 180);  // not good in certain circumstances, maybe don't set a limit on the first move  imagine you start in here |_| trying to go down, you need to double back
-			} else {
-				backtrack = mod360(lastBearing() - 180);
-			}
+			int mostDirectBearing = mostDirectBearing(branchHead, goal.getPoint());
+//			int backtrack;
+//			if (bearingsTaken.isEmpty()) {
+//				backtrack = mod360(mostDirectBearing - 180);  // not good in certain circumstances, maybe don't set a limit on the first move  imagine you start in here |_| trying to go down, you need to double back
+//			} else {
+//				backtrack = mod360(lastBearing() - 180);
+//			}
+
+			
+//			int limit = bearingsTaken.isEmpty() ? mostDirectBearing : mod360(lastBearing() - 180);
+			int limit = mostDirectBearing;
+			
+			// want to try one or two things, doing this first
 			
 			int step =  clockwise ? 10 : -10;
-			var legalBearing = bearingScan(branchHead, mostDirectBearing, step, backtrack);
+			var legalBearing = bearingScan(branchHead, mostDirectBearing + step, step, limit);
 			if (legalBearing.isPresent()) {
 				var newBearing = legalBearing.get();
 				branchHead = moveDestination(branchHead, Drone.MOVE_DISTANCE, newBearing);
@@ -349,11 +438,17 @@ public class Pilot {
 		
 		private Optional<Integer> bearingScan(Point position, int startBearing, int offset, int limitBearing) {			
 			int bearing = startBearing;
-			System.out.println(startBearing);
 			while (bearing != limitBearing) {
-				System.out.println(bearing);
+				
 				if (noFlyZoneChecker.isMoveLegal(position, bearing)) {
-					 return Optional.of(bearing);
+					if (!bearingsTaken.isEmpty()) {
+						if (bearing != mod360(lastBearing() - 180)) {
+							return Optional.of(bearing);
+						}
+					} else {
+						return Optional.of(bearing);
+					}
+					 
 				 }
 				 bearing = mod360(bearing + offset);
 			}
@@ -363,16 +458,28 @@ public class Pilot {
 		public boolean isFinished() {
 			if (stuck) {
 				return false;
-			} else {
 			}
-			if (distanceBetween(branchHead, goal) < Drone.SENSOR_READ_DISTANCE) {
+			
+			if (inRange(branchHead, goal)) {
 				return true;
 			}
-			int mostDirectBearing = mostDirectBearing(branchHead, goal);
-			int backtrackBearing = mod360(lastBearing() - 180);
-			boolean moveIsLegal = noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing);
 			
-			if (moveIsLegal && (mostDirectBearing != backtrackBearing)) {
+			int mostDirectBearing = mostDirectBearing(branchHead, goal.getPoint());                        // Bearing directly to goal
+			int backtrackBearing = mod360(lastBearing() - 180);                                 // Bearing that takes us back to where the branch head last was
+			
+			// It seems like there's a few different cases of backtracking
+			// Backtracking during a search like when you've gone down a thin strip (I'm probably not going to do anything about that)
+			// Backtracking when you're like on the exact edge of a building 
+			// Backtracking when you start a search and then immediately turn back because it's the only way you can go, then check if you're finished and apparently you are but then you 
+			// end up in the exact spot you were just in
+			
+			// Okay, so you can only backtrack when backtracking puts you in range of the sensor that you're trying to read 
+			
+			var backtrackResult = moveDestination(branchHead, Drone.MOVE_DISTANCE, backtrackBearing);
+			
+			
+			if (noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing) 
+					&& ((mostDirectBearing != backtrackBearing) || (inRange(backtrackResult, goal)))) {
 				bearingsTaken.add(mostDirectBearing);
 				return true;
 			}
@@ -384,7 +491,7 @@ public class Pilot {
 		}
 		
 		public double getHeuristic() {
-			return stuck ? Double.MAX_VALUE : (bearingsTaken.size()*Drone.MOVE_DISTANCE) + distanceBetween(branchHead, goal);
+			return stuck ? Double.MAX_VALUE : (bearingsTaken.size()*Drone.MOVE_DISTANCE) + distanceBetween(branchHead, goal.getPoint());
 		}
 		
 		public List<Integer> getBranchDirections() {
@@ -392,7 +499,7 @@ public class Pilot {
 		}
 		
 		public boolean isStuck() {
-			return stuck;
+			return stuck ? stuck : (bearingsTaken.size() > 150);
 		}
 	}
 	

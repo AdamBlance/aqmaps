@@ -11,7 +11,7 @@ public class Sensor extends Waypoint{
 	private final double reading;
 	
 	public Sensor(Point point, String w3wAddress, double battery, double reading) {
-		super(point);
+		super(point, false);
 		this.w3wAddress = w3wAddress;
 		this.battery = battery;
 		this.reading = reading;
