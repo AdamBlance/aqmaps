@@ -85,7 +85,7 @@ public class Pilot {
 		boolean arrived = false;
 		while (!arrived) {
 			
-			System.out.println(LineString.fromLngLats(path).toJson());
+//			System.out.println(LineString.fromLngLats(path).toJson());
 			
 			var previousPosition = drone.getPosition();
 			
@@ -420,8 +420,8 @@ public class Pilot {
 //			}
 
 			
-//			int limit = bearingsTaken.isEmpty() ? mostDirectBearing : mod360(lastBearing() - 180);
-			int limit = mostDirectBearing;
+			int limit = bearingsTaken.isEmpty() ? mostDirectBearing : mod360(lastBearing() - 180);
+//			int limit = mostDirectBearing;
 			
 			// want to try one or two things, doing this first
 			
@@ -441,13 +441,13 @@ public class Pilot {
 			while (bearing != limitBearing) {
 				
 				if (noFlyZoneChecker.isMoveLegal(position, bearing)) {
-					if (!bearingsTaken.isEmpty()) {
-						if (bearing != mod360(lastBearing() - 180)) {
-							return Optional.of(bearing);
-						}
-					} else {
+//					if (!bearingsTaken.isEmpty()) {
+//						if (bearing != mod360(lastBearing() - 180)) {
+//							return Optional.of(bearing);
+//						}
+//					} else {
 						return Optional.of(bearing);
-					}
+//					}
 					 
 				 }
 				 bearing = mod360(bearing + offset);
