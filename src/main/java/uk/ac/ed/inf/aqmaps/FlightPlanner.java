@@ -34,9 +34,9 @@ public class FlightPlanner {
 				
 		boolean improved = true;
 		while (improved) {
+			improved = false;
 			outerloop:
 			for (int i = 1; i < path.size() - 1; i++) {
-				if (i == 1) improved = false; 
 				for (int j = i+1; j < path.size() - 1; j++) {
 					double diff = pathDifference(path, i, j);
 					if (diff < 0) {

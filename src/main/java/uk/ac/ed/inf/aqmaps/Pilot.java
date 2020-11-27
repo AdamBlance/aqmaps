@@ -84,9 +84,7 @@ public class Pilot {
 		// This will repeatedly make moves until we have arrived or the drone cannot proceed
 		boolean arrived = false;
 		while (!arrived) {
-			
-//			System.out.println(LineString.fromLngLats(path).toJson());
-			
+						
 			var previousPosition = drone.getPosition();
 			
 			// Determine the best bearing to take next
@@ -192,45 +190,24 @@ public class Pilot {
 	
 	private List<Integer> computeLegalPath(Waypoint waypoint) {
 		var startPoint = drone.getPosition();
-		// Creates two search branches (clockwise and anti-clockwise)
+
 		// CWBranch and ACWBranch explore clockwise and anti-clockwise around the obstruction respectively 
 		var CWBranch = new SearchBranch(startPoint, waypoint, true, noFlyZoneChecker);
 		var ACWBranch = new SearchBranch(startPoint, waypoint, false, noFlyZoneChecker);
 		
-		while (true) {
-			CWBranch.expand();
-			if (CWBranch.isStuck() || CWBranch.isFinished()) {
-				break;
-			}
-		}
-		
-		while (true) {
-			ACWBranch.expand();
-			if (ACWBranch.isStuck() || ACWBranch.isFinished()) {
-				break;
-			}
-		}
+		CWBranch.evaluate();
+		ACWBranch.evaluate();
 		
 		if (CWBranch.isStuck() && ACWBranch.isStuck()) {
-			return new ArrayList<Integer>();
+			return new ArrayList<Integer>();  // If both get stuck, we could not compute a legal path around the obstruction 
 		} else if (CWBranch.isStuck()) {
 			return ACWBranch.getBranchDirections();
 		} else if (ACWBranch.isStuck()) {
 			return CWBranch.getBranchDirections();
 		}
 		
+		// If both branches completed, return the one with the lower heuristic
 		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBranchDirections() : ACWBranch.getBranchDirections();
-		
-		// Repeat until we find a valid path or both paths get stuck
-//		while (!(CWBranch.isStuck() && ACWBranch.isStuck())) {	
-//			// At each step, pick the branch with the lowest heuristic (this is the A* min-heap step but with only two branches)
-//			var shortestBranch = (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch : ACWBranch;
-//			shortestBranch.expand();
-//			if (shortestBranch.isFinished()) {
-//				return shortestBranch.getBranchDirections();
-//			}
-//		}
-//		return new ArrayList<Integer>();
 }
 	
 	
@@ -380,50 +357,21 @@ public class Pilot {
 			this.noFlyZoneChecker = noFlyZoneChecker;
 		}
 		
-		// I mean actually, you could do something that lets you enter a crevice once, then puts you back out or something
+		public void evaluate() {
+			while (!stuck) {
+				expand();
+				if (isFinished()) {
+					break;
+				}
+			}
+		}
 		
-		
-		//// Okay, so on the first move it is definitely ok to backtrack, because you might be stuck in somewhere
-		// When you're checking if you finished, you definitely can't do that because then you end up in a loop
-		
-		
-		// All right, so when we're expanding the bearing, I think it's okay to have no limit on the check. Like if you had a really weird thing like 
-		/*      X
-		 *      _
-		 *     \ /
-		 */
-		
-		// I can't see an obvious problem and did like 500 tests and it was fine
-		
-		
-		// So now... finishing up
-		
-		// If we know that backtracking will put us in range of the sensor, that is 100% okay and should only really happen if two sensors are overlapping or we starting range of one
-		// Okay, so if we start a new search and move back to the space that we were at before initiating the search, that's also fine, could get us out of weird scenarios
-		
-		// All right, so it's okay to step back to where you were before starting a search
-		// It's okay in a search to move back, but only when you check if you're finished (not in the expand step)
-		
-		// You shouldn't be able to move directly back during an exploration. 
-		
-		// So basically, we make it so that the limit is not set on the first move.
-		// On any move after, the bearing scan limit is set at the last move
-		
-		
-		public void expand() {
+		private void expand() {
 			int mostDirectBearing = mostDirectBearing(branchHead, goal.getPoint());
-//			int backtrack;
-//			if (bearingsTaken.isEmpty()) {
-//				backtrack = mod360(mostDirectBearing - 180);  // not good in certain circumstances, maybe don't set a limit on the first move  imagine you start in here |_| trying to go down, you need to double back
-//			} else {
-//				backtrack = mod360(lastBearing() - 180);
-//			}
 
 			
 			int limit = bearingsTaken.isEmpty() ? mostDirectBearing : mod360(lastBearing() - 180);
-//			int limit = mostDirectBearing;
 			
-			// want to try one or two things, doing this first
 			
 			int step =  clockwise ? 10 : -10;
 			var legalBearing = bearingScan(branchHead, mostDirectBearing + step, step, limit);
@@ -441,21 +389,14 @@ public class Pilot {
 			while (bearing != limitBearing) {
 				
 				if (noFlyZoneChecker.isMoveLegal(position, bearing)) {
-//					if (!bearingsTaken.isEmpty()) {
-//						if (bearing != mod360(lastBearing() - 180)) {
-//							return Optional.of(bearing);
-//						}
-//					} else {
 						return Optional.of(bearing);
-//					}
-					 
 				 }
 				 bearing = mod360(bearing + offset);
 			}
 			return Optional.empty();
 		}
 		
-		public boolean isFinished() {
+		private boolean isFinished() {
 			if (stuck) {
 				return false;
 			}
@@ -465,15 +406,7 @@ public class Pilot {
 			}
 			
 			int mostDirectBearing = mostDirectBearing(branchHead, goal.getPoint());                        // Bearing directly to goal
-			int backtrackBearing = mod360(lastBearing() - 180);                                 // Bearing that takes us back to where the branch head last was
-			
-			// It seems like there's a few different cases of backtracking
-			// Backtracking during a search like when you've gone down a thin strip (I'm probably not going to do anything about that)
-			// Backtracking when you're like on the exact edge of a building 
-			// Backtracking when you start a search and then immediately turn back because it's the only way you can go, then check if you're finished and apparently you are but then you 
-			// end up in the exact spot you were just in
-			
-			// Okay, so you can only backtrack when backtracking puts you in range of the sensor that you're trying to read 
+			int backtrackBearing = mod360(lastBearing() - 180);                                 // Bearing that takes us back to where the branch head last was 
 			
 			var backtrackResult = moveDestination(branchHead, Drone.MOVE_DISTANCE, backtrackBearing);
 			

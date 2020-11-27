@@ -48,8 +48,6 @@ public class App {
     	
     	// Before we do anything, make sure that the provided start position is legal
     	exitIfInvalid(startPoint);
-    	// This doesn't check if the start position is inside a no-fly-zone
-    	// If that happens, the drone will just bounce around inside it until it runs out of moves
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	
@@ -134,6 +132,14 @@ public class App {
     				p.longitude());
     		System.exit(1);
     	}
+       	for (var zone : noFlyZones) {
+       		if (TurfJoins.inside(p, zone)) {
+        		System.out.printf("Fatal error: Cannot start navigation at %f, %f (inside a no-fly-zone). Exiting...%n", 
+        				p.latitude(), 
+        				p.longitude());
+        		System.exit(1);
+       		}
+       	}
     }
     
     private static boolean attemptFlight(Pilot pilot, List<Waypoint> route) {
