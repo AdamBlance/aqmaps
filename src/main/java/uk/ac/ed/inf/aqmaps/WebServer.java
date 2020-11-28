@@ -55,7 +55,7 @@ public class WebServer {
 		var sensors = new ArrayList<Sensor>();
 		for (var jsonObj : jsonObjList) {
 			var w3wAddress = jsonObj.get("location").getAsString();
-			var point = getWhat3WordsCoordinates(w3wAddress);
+			var point = getCoordinateFromWhat3WordsAddress(w3wAddress);
 			double battery = jsonObj.get("battery").getAsDouble();
 			double reading;
 			try {
@@ -68,7 +68,7 @@ public class WebServer {
 		return sensors;
 	}
 
-	private Point getWhat3WordsCoordinates(String w3wAddress) throws UnexpectedHTTPResponseException {
+	private Point getCoordinateFromWhat3WordsAddress(String w3wAddress) throws UnexpectedHTTPResponseException {
 		String w3wData = getResourceAsString(String.format("%s:%s/words/%s/details.json", serverURL, port, w3wAddress.replace('.', '/')));
 		var jsonObj = new Gson().fromJson(w3wData, JsonObject.class);
 		var coords = jsonObj.getAsJsonObject("coordinates");

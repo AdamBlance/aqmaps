@@ -140,6 +140,8 @@ public class Pilot {
 		return Optional.empty();
 	}
 	
+	
+	
 	private List<Integer> computeLegalPath(Waypoint waypoint) {
 		var startPoint = drone.getPosition();
 
@@ -165,7 +167,6 @@ public class Pilot {
 		// If both branches completed, return the one with the lower heuristic
 		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBranchDirections() : ACWBranch.getBranchDirections();
 	}
-	
 	
 	private static Optional<Integer> legalBearingToWaypoint(Point pos, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
 		
@@ -203,7 +204,6 @@ public class Pilot {
 		}
 		return Optional.empty();
 	}
-	
 	
 	private static class NoFlyZoneChecker {
 

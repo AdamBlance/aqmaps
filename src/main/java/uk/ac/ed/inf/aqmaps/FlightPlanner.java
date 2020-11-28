@@ -37,8 +37,8 @@ public class FlightPlanner {
 		while (improved) {
 			improved = false;
 			outerloop:
-			for (int i = 1; i <= path.size() - 2; i++) {
-				for (int j = i+1; j <= path.size() - 1; j++) {
+			for (int i = 1; i <= path.size() - 3; i++) {
+				for (int j = i+1; j <= path.size() - 2; j++) {
 					boolean better = pathDifference(path, i, j);
 					if (better) {
 						path = modifiedPath(path, i, j);
