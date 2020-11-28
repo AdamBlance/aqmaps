@@ -49,9 +49,9 @@ public class App {
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	
-    	day = "06";
-    	month = "09";
-    	year = "2021";
+//    	day = "06";
+//    	month = "09";
+//    	year = "2021";
     	
     	if (!retrieveRelevantData(day, month, year, port)) {
     		moves = -1;
@@ -63,7 +63,7 @@ public class App {
     	startPoint = getRandPoint(noFlyZones);
     	exitIfInvalid(startPoint);
     	
-    	startPoint = Point.fromJson("{\"type\":\"Point\",\"coordinates\":[-3.1886875,55.9457096]}");
+//    	startPoint = Point.fromJson("{\"type\":\"Point\",\"coordinates\":[-3.1886875,55.9457096]}");
     	
     	var drone = new Drone(startPoint);
     	var pilot = new Pilot(drone, noFlyZones, droneConfinementArea);

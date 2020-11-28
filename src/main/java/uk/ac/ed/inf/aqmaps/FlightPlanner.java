@@ -37,10 +37,10 @@ public class FlightPlanner {
 		while (improved) {
 			improved = false;
 			outerloop:
-			for (int i = 1; i < path.size() - 1; i++) {
-				for (int j = i+1; j < path.size() - 1; j++) {
-					double diff = pathDifference(path, i, j);
-					if (diff < 0) {
+			for (int i = 1; i <= path.size() - 2; i++) {
+				for (int j = i+1; j <= path.size() - 1; j++) {
+					boolean better = pathDifference(path, i, j);
+					if (better) {
 						path = modifiedPath(path, i, j);
 						improved = true;					
 						break outerloop;
@@ -56,7 +56,7 @@ public class FlightPlanner {
 		return sensorPath;
 	}
 	
-	private static double pathDifference(List<Waypoint> path, int start, int end) {
+	private static boolean pathDifference(List<Waypoint> path, int start, int end) {
 		
 		var beforeStartP = path.get(start - 1).getPoint();
 		var startP = path.get(start).getPoint();	
@@ -66,7 +66,7 @@ public class FlightPlanner {
 		double lengthBefore = distanceBetween(beforeStartP, startP) + distanceBetween(endP, afterEndP);
 		double lengthAfter = distanceBetween(beforeStartP, endP) + distanceBetween(startP, afterEndP);
 				
-		return lengthAfter - lengthBefore;
+		return lengthAfter < lengthBefore;
 	}
 	
 	private static List<Waypoint> modifiedPath(List<Waypoint> path, int s, int e) {

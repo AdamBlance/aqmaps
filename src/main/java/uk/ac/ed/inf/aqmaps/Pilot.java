@@ -145,7 +145,7 @@ public class Pilot {
 
 		var penis = Feature.fromGeometry(LineString.fromLngLats(path));
 		penis.addStringProperty("rgb-string", "#000000");
-		System.out.println(penis.toJson());
+//		System.out.println(penis.toJson());
 		
 		// CWBranch and ACWBranch explore clockwise and anti-clockwise around the obstruction respectively 
 		var CWBranch = new SearchBranch(startPoint, waypoint, true, noFlyZoneChecker);
@@ -393,7 +393,7 @@ public class Pilot {
 				
 				var penis = Feature.fromGeometry(LineString.fromLngLats(Arrays.asList(branchHead, temp)));
 				penis.addStringProperty("rgb-string", "#000000");
-				System.out.println(penis.toJson());
+//				System.out.println(penis.toJson());
 				
 				branchHead = temp;
 				bearingsTaken.add(newBearing);
@@ -404,8 +404,6 @@ public class Pilot {
 		}
 		
 		private Optional<Integer> bearingScan(int scanFrom, int scanTo, int step) {
-			
-			
 			for (int bearing = scanFrom; bearing != scanTo; bearing = mod360(bearing + step)) {
 				
 				if (noFlyZoneChecker.isMoveLegal(branchHead, bearing)) {
@@ -420,15 +418,44 @@ public class Pilot {
 				return false;
 			}
 			
+			// FIRST
+			// Check if we're already in range (corner cutting for example)
 			if (inRange(branchHead, goal)) {
 				return true;
 			}
 			
+
+			// SECOND
+			// Check if there is a move (either direct or scanned that lands us directly inside the target)
 			var legalBearingToWaypoint = legalBearingToWaypoint(branchHead, goal, noFlyZoneChecker);
+			
 			if (legalBearingToWaypoint.isPresent()) {
-				bearingsTaken.add(legalBearingToWaypoint.get());
-				return true;
+				var bearing = legalBearingToWaypoint.get();
+				if (inRange(moveDestination(branchHead, bearing), goal)) {
+					bearingsTaken.add(bearing);
+					return true;
+				}
+				
+				
+				if (bearing != backtrackBearing()) {
+					bearingsTaken.add(bearing);
+					return true;
+				}
+				
 			}
+			
+			return false;
+
+			
+			// THIRD
+			// Check if there is a move directly towards the target that DOES NOT land in range of it
+			// We check this because rounding problems mean that sometimes there is a legal move towards the goal that just puts us back a step
+			// ...and we know from that step that there is no legal move towards it 
+			
+			// so will need something that if you're within a certain range, it then checks more stuff
+			
+			
+
 			
 			// Okay so at this point we've not checked anything like the backtrack bearing
 			
@@ -441,24 +468,26 @@ public class Pilot {
 			// Could return some weird object that has 
 			// whether it was a direct path or actually lands in there
 			
-			int mostDirectBearing = mostDirectBearing(branchHead, goal);
-			int backtrackBearing = backtrackBearing();
-			var backtrackResult = moveDestination(branchHead, backtrackBearing);
+			// Can figure out the exact minimum set of functions later stop procrastinating
+			
+//			int mostDirectBearing = mostDirectBearing(branchHead, goal);
+//			int backtrackBearing = backtrackBearing();
+//			var backtrackResult = moveDestination(branchHead, backtrackBearing);
 			
 			// There is an edge case where
 			//    the drone starts in range of a sensor
 			//    it moves towards it, overshooting and hitting a wall
 			//    it then does a bearing scan and finds a legal move 180 degrees from where it tried to move at first
 			
-			var penis = Feature.fromGeometry(LineString.fromLngLats(Arrays.asList(branchHead, moveDestination(branchHead, mostDirectBearing))));
-			penis.addStringProperty("rgb-string", "#000000");
-			System.out.println(penis.toJson());
-			
-			if (noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing) && ((mostDirectBearing != backtrackBearing) || (inRange(backtrackResult, goal)))) {
-				bearingsTaken.add(mostDirectBearing);
-				return true;
-			}
-			return false;
+//			var penis = Feature.fromGeometry(LineString.fromLngLats(Arrays.asList(branchHead, moveDestination(branchHead, mostDirectBearing))));
+//			penis.addStringProperty("rgb-string", "#000000");
+//			System.out.println(penis.toJson());
+//			
+//			if (noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing) && ((mostDirectBearing != backtrackBearing) || (inRange(backtrackResult, goal)))) {
+//				bearingsTaken.add(mostDirectBearing);
+//				return true;
+//			}
+//			return false;
 		}
 		
 		private int backtrackBearing() {
