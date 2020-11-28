@@ -3,8 +3,6 @@ package uk.ac.ed.inf.aqmaps;
 import com.mapbox.geojson.Point;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
-import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
-
 import static uk.ac.ed.inf.aqmaps.PointUtils.inRange;
 
 public class Drone {
@@ -12,37 +10,32 @@ public class Drone {
 	private Point position;
 	private int timesMoved = 0;
 	
-	// These are public for easy access by the Pilot object
+	// These are only public so that they can be easily accessed
 	public static final double MOVE_DISTANCE = 0.0003;
-	public static final double SENSOR_READ_DISTANCE = 0.0002;
 	public static final int MAX_MOVES = 150;
+	public static final double SENSOR_READ_DISTANCE = 0.0002;
+	public static final double END_POINT_DISTANCE = 0.0003;
 	
 	public Drone(Point startPosition) {
 		position = startPosition;
 	}
 
-	// Tries to move and returns Optional of the new position
-	// Will return an empty optional if the drone is out of moves
 	public boolean move(int bearing) {
 		if (timesMoved >= MAX_MOVES) {
 			return false;
 		}
-		var destination = moveDestination(position, MOVE_DISTANCE, bearing);
-		position = destination;
+		position = moveDestination(position, bearing);
 		timesMoved += 1;
 		return true;
 	}
 
-	// Tries to read the pollution sensor specified
-	// Will return Optional of the reading
 	public double readSensor(Sensor sensor) {
 		if (inRange(position, sensor)) {
 			return sensor.getReading();
-		} else {
-			System.out.println("Fatal error: Drone tried to read sensor that was out of range. Exiting...");
-			System.exit(1);
 		}
-		return 0;
+		System.out.println("Fatal error: Drone tried to read sensor that was out of range. Exiting...");
+		System.exit(1);
+		return 0;  // Method always needs to return something
 	}
 	
 	public Point getPosition() {

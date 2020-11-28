@@ -2,6 +2,7 @@ package uk.ac.ed.inf.aqmaps;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.mapbox.geojson.Point;
 
@@ -10,12 +11,12 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 
 public class FlightPlanner {
 	
-	public static List<Waypoint> greedyPath(Point start, List<Waypoint> waypoints) {		
-		var dronePath = new ArrayList<Waypoint>();
-		var unvisited = new ArrayList<Waypoint>(waypoints);
+	public static List<Sensor> greedyPath(Point start, List<Sensor> sensors) {		
+		var dronePath = new ArrayList<Sensor>();
+		var unvisited = new ArrayList<Sensor>(sensors);
 		var currentPoint = start;
 		
-		for (int i = 0; i < waypoints.size(); i++) {
+		for (int i = 0; i < sensors.size(); i++) {
 			var closest = closestSensor(currentPoint, unvisited);
 			currentPoint = closest.getPoint();
 			dronePath.add(closest);
@@ -24,12 +25,12 @@ public class FlightPlanner {
 		return dronePath;
 	}
 	
-	public static List<Waypoint> twoOptPath(Point start, List<Waypoint> waypoints) {
-		var startWaypoint = new Waypoint(start, true);
+	public static List<Sensor> twoOptPath(Point start, List<Sensor> sensors) {
+		var startWaypoint = new StartEndPoint(start);
 		
 		List<Waypoint> path = new ArrayList<>();
 		path.add(startWaypoint);
-		path.addAll(greedyPath(start, waypoints));
+		path.addAll(greedyPath(start, sensors));
 		path.add(startWaypoint);
 				
 		boolean improved = true;
@@ -47,7 +48,12 @@ public class FlightPlanner {
 				}
 			}
 		}
-		return path.subList(1, path.size() - 1);
+		var sensorPath = path.subList(1, path.size() - 1)  // Remove the start and end of the path that are both the start/end point
+				.stream()
+				.map(waypoint -> (Sensor) waypoint)  // Cast from List<Waypoint> to List<Sensor>
+				.collect(Collectors.toList());
+
+		return sensorPath;
 	}
 	
 	private static double pathDifference(List<Waypoint> path, int start, int end) {
@@ -71,11 +77,9 @@ public class FlightPlanner {
 		return output;
 	}
 	
-	// Just wanted to try java streams here, obviously this isn't the most efficient
-	// I would have done an argmax type thing but java doesn't have a proper pair datatype
-	private static Waypoint closestSensor(Point point, List<Waypoint> sensors) {
+	private static Sensor closestSensor(Point point, List<Sensor> sensors) {
 		return sensors.stream()
-				.min((Waypoint a, Waypoint b) -> Double.compare(distanceBetween(point, a.getPoint()), distanceBetween(point, b.getPoint())))
+				.min((Sensor a, Sensor b) -> Double.compare(distanceBetween(point, a.getPoint()), distanceBetween(point, b.getPoint())))
 				.get();
 	}
 	

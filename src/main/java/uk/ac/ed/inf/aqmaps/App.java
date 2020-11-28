@@ -34,7 +34,7 @@ public class App {
 	
 	public static double moves = 0;
 	
-	private static List<Waypoint> waypoints = null;
+	private static List<Sensor> sensors = null;
 	private static List<Polygon> noFlyZones = null;
 	
     public static void main( String[] args ) {
@@ -46,31 +46,30 @@ public class App {
     			Double.parseDouble(args[3]));
     	var port = args[6];
     	
-    	// Before we do anything, make sure that the provided start position is legal
-    	exitIfInvalid(startPoint);
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	
-//    	day = "21";
-//    	month = "08";
-//    	year = "2020";
+    	day = "06";
+    	month = "09";
+    	year = "2021";
     	
     	if (!retrieveRelevantData(day, month, year, port)) {
     		moves = -1;
     		return;
     	}
 
+//    	exitIfInvalid(startPoint);
     	
     	startPoint = getRandPoint(noFlyZones);
     	exitIfInvalid(startPoint);
     	
-//    	startPoint = Point.fromJson("{\"type\":\"Point\",\"coordinates\":[-3.1902298,55.9440763]}");
+    	startPoint = Point.fromJson("{\"type\":\"Point\",\"coordinates\":[-3.1886875,55.9457096]}");
     	
     	var drone = new Drone(startPoint);
     	var pilot = new Pilot(drone, noFlyZones, droneConfinementArea);
     	
     	// Plans a 2-Opt optimised route
-    	var route = FlightPlanner.twoOptPath(startPoint, waypoints);
+    	var route = FlightPlanner.twoOptPath(startPoint, sensors);
 
     	boolean yay = attemptFlight(pilot, route);
 
@@ -142,7 +141,7 @@ public class App {
        	}
     }
     
-    private static boolean attemptFlight(Pilot pilot, List<Waypoint> route) {
+    private static boolean attemptFlight(Pilot pilot, List<Sensor> route) {
     	boolean completed = pilot.followRoute(route);
     	if (!completed) {
     		System.out.printf("Did not manage to return within %d moves. Map and log will still be generated.%n", 
@@ -155,11 +154,7 @@ public class App {
 	private static boolean retrieveRelevantData(String day, String month, String year, String port) {
     	var webServer = WebServer.getInstanceWithConfig("http://localhost", port);
        	try {
-    		var sensors = webServer.getSensorData(day, month, year);
-        	// Casts from list of Sensor (subclass) to list of Waypoint (superclass) for FlightPlanner which takes the latter
-        	waypoints = sensors.stream()
-        			.map(sensor -> (Waypoint) sensor)
-        			.collect(Collectors.toList());
+    		sensors = webServer.getSensorData(day, month, year);
     		noFlyZones = webServer.getNoFlyZones();
     		return true;
     	} catch (UnexpectedHTTPResponseException e) {
@@ -207,7 +202,6 @@ public class App {
 //    	System.out.printf("%s and %s created successfully!%n", flightpathFname, readingsFname);
     }
     
-	// Writes a string to a file, overwriting any existing file with the same filename
     private static void writeFile(String filename, String contents) throws IOException {
 		var file = new File(filename);
 		if (file.exists()) {

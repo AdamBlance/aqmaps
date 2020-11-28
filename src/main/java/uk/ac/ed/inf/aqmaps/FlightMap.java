@@ -15,34 +15,33 @@ public class FlightMap {
 	private static final String GREY = "#aaaaaa";
 	private static final String BLACK = "#000000";
 	
-	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, Boolean> sensorVisitedStatus) {
+	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, Boolean> sensorsAndVisitedStatus) {
 		
-		var markerFeatures = createMarkerFeatures(sensorVisitedStatus);
+		var allFeatures = new ArrayList<Feature>();
+
+		// Uses both the sensor (key) and whether or not it was visited (value) to create each marker
+		var markerFeatures = createMarkerFeatures(sensorsAndVisitedStatus);
+		allFeatures.addAll(markerFeatures);
 		
+		// Line showing the drone's path
 		var flightpathFeature = Feature.fromGeometry(LineString.fromLngLats(flightpath));
-		
-		var allMapFeatures = new ArrayList<Feature>();
-		allMapFeatures.addAll(markerFeatures);
-		if (flightpath.size() >= 2) {
-			allMapFeatures.add(flightpathFeature);
-		} else if (flightpath.size() == 1) {
-			allMapFeatures.add(Feature.fromGeometry(flightpath.get(0)));
-		}
-		
-		return FeatureCollection.fromFeatures(allMapFeatures);
+		allFeatures.add(flightpathFeature);
+				
+		return FeatureCollection.fromFeatures(allFeatures);
 	}
 	
-	private static List<Feature> createMarkerFeatures(HashMap<Sensor, Boolean> sensorReports) {
+	private static List<Feature> createMarkerFeatures(HashMap<Sensor, Boolean> sensorsAndVisitedStatus) {
 		
 		var markerFeatures = new ArrayList<Feature>();
-		for (var sensor: sensorReports.keySet()) {
-			boolean visited = sensorReports.get(sensor);
+		
+		for (var sensor : sensorsAndVisitedStatus.keySet()) {  // For each sensor
+			
+			boolean visited = sensorsAndVisitedStatus.get(sensor);  // Get whether it was visited 
 			
 			var marker = Feature.fromGeometry(sensor.getPoint());
+			
 			marker.addStringProperty("location", sensor.getW3wAddress());
 			
-			// If sensor wasn't visited, make it grey
-			// If reading was invalid, make it black and give it a cross
 			if (!visited) {
 				marker.addStringProperty("rgb-string", GREY);
 				marker.addStringProperty("marker-color", GREY);
@@ -51,21 +50,22 @@ public class FlightMap {
 				marker.addStringProperty("marker-color", BLACK);
 				marker.addStringProperty("marker-symbol", "cross");
 			} else {
-				double reading = sensor.getReading();
+				var reading = sensor.getReading();
 				var colour = pollutionToColour(reading);
+				
 				marker.addStringProperty("rgb-string", colour);
 				marker.addStringProperty("marker-color", colour);
 				marker.addStringProperty("marker-symbol", reading < 128 ? "lighthouse" : "danger");	
 			}
+			
 			markerFeatures.add(marker);
 		}
-		
 		return markerFeatures;
 	}
 	
 	private static String pollutionToColour(double reading) {
 		// Integer division to get the right colour
-		// Coursework says the max is 256.0 so I explicitly check for that (but I think it's a typo)
+		// Coursework says the max is 256.0 (not 255.0), in that case just set to bright red (7)
 		int index = (reading <= 255.0) ? ((int) reading) / 32 : 7; 
 		return HUES[index];
 	}
