@@ -20,6 +20,7 @@ import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
 import com.mapbox.geojson.Polygon;
+import com.mapbox.turf.TurfJoins;
 
 
 public class Pilot {
@@ -120,10 +121,13 @@ public class Pilot {
 		
 		// Otherwise, (if there is nothing in the way) go in a straight line towards the waypoint  
 		var dronePos = drone.getPosition();
-		int bearing = mostDirectBearing(dronePos, waypoint);
-		if (noFlyZoneChecker.isMoveLegal(dronePos, bearing)) {
-			return Optional.of(bearing);
+		var maybe = legalBearingToWaypoint(dronePos, waypoint, noFlyZoneChecker);
+		if (maybe.isPresent()) {
+			// TODO: Use is present everywhere it's much better
+			
+			return Optional.of(maybe.get());
 		}
+		
 		
 		// Finally, if both fail, attempt to compute a path around the obstruction
 		var pathToTake = computeLegalPath(waypoint);
@@ -160,9 +164,45 @@ public class Pilot {
 		
 		// If both branches completed, return the one with the lower heuristic
 		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBranchDirections() : ACWBranch.getBranchDirections();
-}
+	}
 	
 	
+	private static Optional<Integer> legalBearingToWaypoint(Point pos, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
+		
+		int mostDirectBearing = mostDirectBearing(pos, waypoint);
+		
+		if (noFlyZoneChecker.isMoveLegal(pos, mostDirectBearing)) {
+			return Optional.of(mostDirectBearing);
+		}
+		
+		// Otherwise, we need to scan for a good one
+		
+		/* 
+		 * The absolute worst case scenario is where the drone is on the absolute edge of the radius
+		 * and the sensor is on the no-fly-zone edge which is perpendicular to the approach angle of the drone
+		 * 
+		 * In this scenario, the drone could stay in range by turning 45 degrees in either direction
+		 * Our drone can't do this since it moves in 10 degree increments
+		 * Instead, we should scan 50 degrees from either side and just in case I'm forgetting something, lets make it 60 degrees so 120 degree scan in total
+		*/
+		
+		// So before we do this check we should really check that the drone is overshooting and hitting a wall
+		// Otherwise, we'll be checking on corner cuts and stuff
+		
+		if (noFlyZoneChecker.moveLandsInNoFlyZone(pos, mostDirectBearing)) {
+			for (int i = 10; i <= 60; i += 10) {
+				int cwCheck = mod360(mostDirectBearing + i);
+				if (noFlyZoneChecker.isMoveLegal(pos, cwCheck) && inRange(moveDestination(pos, cwCheck), waypoint)) {
+					return Optional.of(cwCheck);
+				}
+				int acwCheck = mod360(mostDirectBearing - i);
+				if (noFlyZoneChecker.isMoveLegal(pos, acwCheck) && inRange(moveDestination(pos, acwCheck), waypoint)) {
+					return Optional.of(acwCheck);
+				}
+			}
+		}
+		return Optional.empty();
+	}
 	
 	
 	private static class NoFlyZoneChecker {
@@ -183,7 +223,7 @@ public class Pilot {
 			if (!pointStrictlyInsideBoundingBox(destination, droneConfinementArea)) {
 				return false;
 			}
-
+			
 			for (var zone : boundariesWithNoFlyZones.keySet()) {
 				if (pointStrictlyInsideBoundingBox(origin, zone.bbox()) || 
 						pointStrictlyInsideBoundingBox(destination, zone.bbox())) {				
@@ -197,6 +237,15 @@ public class Pilot {
 				}
 			}
 			return true;
+		}
+		
+		public boolean moveLandsInNoFlyZone(Point origin, int bearing) {
+			for (var noFlyZone : boundariesWithNoFlyZones.values()) {
+				if (TurfJoins.inside(moveDestination(origin, bearing), noFlyZone)) {
+					return true;
+				}
+			}
+			return false;
 		}
 		
 		// Details on how this works will be in Section 3 of the report
@@ -375,7 +424,23 @@ public class Pilot {
 				return true;
 			}
 			
-			// We test to see if there is a unobstructed move directly towards the goal from the branch head
+			var legalBearingToWaypoint = legalBearingToWaypoint(branchHead, goal, noFlyZoneChecker);
+			if (legalBearingToWaypoint.isPresent()) {
+				bearingsTaken.add(legalBearingToWaypoint.get());
+				return true;
+			}
+			
+			// Okay so at this point we've not checked anything like the backtrack bearing
+			
+			// We just returned the direct path regardless of if it was the backtrack bearing or not, will need to check that
+			
+			// So we need something that checks for direct landings in sensor range
+			// We need a separate thing that checks for paths towards
+			
+			// Thankfully only relevant inside the branch search
+			// Could return some weird object that has 
+			// whether it was a direct path or actually lands in there
+			
 			int mostDirectBearing = mostDirectBearing(branchHead, goal);
 			int backtrackBearing = backtrackBearing();
 			var backtrackResult = moveDestination(branchHead, backtrackBearing);
