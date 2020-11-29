@@ -11,8 +11,8 @@ public class Drone {
 	private int timesMoved = 0;
 	
 	// These are only public so that they can be easily accessed
-	public static final double MOVE_DISTANCE = 0.0003;
 	public static final int MAX_MOVES = 150;
+	public static final double MOVE_DISTANCE = 0.0003;
 	public static final double SENSOR_READ_DISTANCE = 0.0002;
 	public static final double END_POINT_DISTANCE = 0.0003;
 	

@@ -17,8 +17,6 @@ import com.mapbox.geojson.Feature;
 import com.mapbox.geojson.FeatureCollection;
 import com.mapbox.geojson.LineString;
 
-import static uk.ac.ed.inf.aqmaps.PointUtils.pointStrictlyInsideBoundingBox;
-
 public class App {	
 	
 	// Dimensions of bounding box
@@ -41,7 +39,7 @@ public class App {
     	var day = args[0];
     	var month = args[1];
     	var year = args[2];
-    	var startPoint = Point.fromLngLat(
+    	var startingPoint = Point.fromLngLat(
     			Double.parseDouble(args[4]), 
     			Double.parseDouble(args[3]));
     	var port = args[6];
@@ -60,28 +58,28 @@ public class App {
 
 //    	exitIfInvalid(startPoint);
     	
-    	startPoint = getRandPoint(noFlyZones);
-    	exitIfInvalid(startPoint);
+    	startingPoint = getRandPoint(noFlyZones);
+    	exitIfInvalid(startingPoint);
     	
 //    	startPoint = Point.fromJson("{\"type\":\"Point\",\"coordinates\":[-3.1886875,55.9457096]}");
     	
-    	var drone = new Drone(startPoint);
+    	// Plans a 2-Opt optimised route
+    	var route = FlightPlanner.twoOptPath(startingPoint, sensors);
+
+    	var drone = new Drone(startingPoint);
     	var pilot = new Pilot(drone, noFlyZones, droneConfinementArea);
     	
-    	// Plans a 2-Opt optimised route
-    	var route = FlightPlanner.twoOptPath(startPoint, sensors);
-
     	boolean yay = attemptFlight(pilot, route);
 
     	moves = drone.getTimesMoved();
     	
     	if (moves >= 110 || !yay) {
     		outputResults(pilot, day, month, year);
-    		System.out.printf("%s/%s/%s - %s%n", day, month, year, Feature.fromGeometry(startPoint).toJson());
-    		System.out.println(startPoint.longitude());
-    		System.out.println(startPoint.latitude());
-    		System.out.println(pilot.getPath().get(0).longitude());
-    		System.out.println(pilot.getPath().get(0).latitude());
+    		System.out.printf("%s/%s/%s - %s%n", day, month, year, Feature.fromGeometry(startingPoint).toJson());
+    		System.out.println(startingPoint.longitude());
+    		System.out.println(startingPoint.latitude());
+    		System.out.println(pilot.getPathTaken().get(0).longitude());
+    		System.out.println(pilot.getPathTaken().get(0).latitude());
     		System.out.println(moves);
     	}
     	
@@ -125,12 +123,6 @@ public class App {
 
     
     private static void exitIfInvalid(Point p) {
-       	if (!pointStrictlyInsideBoundingBox(p, droneConfinementArea)) {
-    		System.out.printf("Fatal error: Cannot start navigation at %f, %f (outside drone confinement area). Exiting...%n", 
-    				p.latitude(), 
-    				p.longitude());
-    		System.exit(1);
-    	}
        	for (var zone : noFlyZones) {
        		if (TurfJoins.inside(p, zone)) {
         		System.out.printf("Fatal error: Cannot start navigation at %f, %f (inside a no-fly-zone). Exiting...%n", 
@@ -154,7 +146,7 @@ public class App {
 	private static boolean retrieveRelevantData(String day, String month, String year, String port) {
     	var webServer = WebServer.getInstanceWithConfig("http://localhost", port);
        	try {
-    		sensors = webServer.getSensorData(day, month, year);
+    		sensors = webServer.getSensors(day, month, year);
     		noFlyZones = webServer.getNoFlyZones();
     		return true;
     	} catch (UnexpectedHTTPResponseException e) {
@@ -165,7 +157,7 @@ public class App {
 	}
 
     private static void outputResults(Pilot pilot, String day, String month, String year) {
-    	var map = FlightMap.generateFromFlightData(pilot.getPath(), pilot.getSensorsVisited());
+    	var map = FlightMap.generateFromFlightData(pilot.getPathTaken(), pilot.getSensorsVisited());
     	
     	// I could have left this out in my submission but maybe it's helpful to someone
     	if (INCLUDE_NO_FLY_ZONES_IN_MAP) {

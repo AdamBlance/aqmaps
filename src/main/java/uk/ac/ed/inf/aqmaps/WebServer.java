@@ -48,7 +48,7 @@ public class WebServer {
 		return noFlyZones;
 	}
 	
-	public List<Sensor> getSensorData(String day, String month, String year) throws UnexpectedHTTPResponseException {
+	public List<Sensor> getSensors(String day, String month, String year) throws UnexpectedHTTPResponseException {
 		var sensorJson = getResourceAsString(String.format("%s:%s/maps/%s/%s/%s/air-quality-data.json", serverURL, port, year, month, day));
 		var jsonObjList = new Gson().fromJson(sensorJson, JsonObject[].class);
 		

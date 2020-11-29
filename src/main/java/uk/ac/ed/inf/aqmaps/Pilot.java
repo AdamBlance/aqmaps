@@ -4,7 +4,6 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
-import static uk.ac.ed.inf.aqmaps.PointUtils.pointStrictlyInsideBoundingBox;
 import static uk.ac.ed.inf.aqmaps.PointUtils.inRange;
 
 import java.util.ArrayList;
@@ -29,7 +28,7 @@ public class Pilot {
 	private final NoFlyZoneChecker noFlyZoneChecker;
 	
 	private final List<String> log = new ArrayList<>();
-	private final List<Point> path = new ArrayList<>();
+	private final List<Point> pathTaken = new ArrayList<>();
 	private final HashMap<Sensor, Boolean> sensorsVisited = new HashMap<>();
 	
 	private final Queue<Integer> precomputedBearings = new LinkedList<>();
@@ -37,16 +36,16 @@ public class Pilot {
 	public Pilot(Drone drone, List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 		this.drone = drone;
 		this.noFlyZoneChecker = new NoFlyZoneChecker(noFlyZones, droneConfinementArea);
-		path.add(drone.getPosition());  // Include start position in the flight path
+		pathTaken.add(drone.getPosition());  // Include start position in the flight path
 	}
 	
-	public boolean followRoute(List<Sensor> sensors) {
+	public boolean followRoute(List<Sensor> route) {
 		
-		for (var sensor : sensors) {
+		for (var sensor : route) {
 			sensorsVisited.put(sensor, false);  
 		}
 
-		for (var sensor : sensors) {
+		for (var sensor : route) {
 			boolean arrived = navigateTo(sensor);
 			if (!arrived) {
 				return false;
@@ -54,7 +53,7 @@ public class Pilot {
 			takeReading(sensor);
 		}
 		
-		var startPosition = new StartEndPoint(path.get(0));
+		var startPosition = new StartEndPoint(pathTaken.get(0));
 		return navigateTo(startPosition);  // True if we complete the loop, false if we don't.
 	}
 	
@@ -101,7 +100,7 @@ public class Pilot {
 	
 	private void logMove(Point previousPosition, int bearing, Point newPosition, String w3wAddress) {
 		// Update the path that the drone has taken
-		path.add(newPosition);
+		pathTaken.add(newPosition);
 		// Create flightpath-*.txt line for this move
 		log.add(String.format("%d,%f,%f,%d,%f,%f,%s%n",
 				drone.getTimesMoved(),
@@ -121,7 +120,7 @@ public class Pilot {
 		
 		// Otherwise, (if there is nothing in the way) go in a straight line towards the waypoint  
 		var dronePos = drone.getPosition();
-		var maybe = legalBearingToWaypoint(dronePos, waypoint, noFlyZoneChecker);
+		var maybe = mostDirectBearingWithoutOvershoot(dronePos, waypoint, noFlyZoneChecker);
 		if (maybe.isPresent()) {
 			// TODO: Use is present everywhere it's much better
 			
@@ -145,7 +144,7 @@ public class Pilot {
 	private List<Integer> computeLegalPath(Waypoint waypoint) {
 		var startPoint = drone.getPosition();
 
-		var penis = Feature.fromGeometry(LineString.fromLngLats(path));
+		var penis = Feature.fromGeometry(LineString.fromLngLats(pathTaken));
 		penis.addStringProperty("rgb-string", "#000000");
 //		System.out.println(penis.toJson());
 		
@@ -168,11 +167,12 @@ public class Pilot {
 		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBranchDirections() : ACWBranch.getBranchDirections();
 	}
 	
-	private static Optional<Integer> legalBearingToWaypoint(Point pos, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
+	
+	private static Optional<Integer> mostDirectBearingWithoutOvershoot(Point point, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
 		
-		int mostDirectBearing = mostDirectBearing(pos, waypoint);
+		int mostDirectBearing = mostDirectBearing(point, waypoint);
 		
-		if (noFlyZoneChecker.isMoveLegal(pos, mostDirectBearing)) {
+		if (noFlyZoneChecker.moveIsLegal(point, mostDirectBearing)) {
 			return Optional.of(mostDirectBearing);
 		}
 		
@@ -190,14 +190,14 @@ public class Pilot {
 		// So before we do this check we should really check that the drone is overshooting and hitting a wall
 		// Otherwise, we'll be checking on corner cuts and stuff
 		
-		if (noFlyZoneChecker.moveLandsInNoFlyZone(pos, mostDirectBearing)) {
+		if (noFlyZoneChecker.moveLandsInNoFlyZone(point, mostDirectBearing)) {
 			for (int i = 10; i <= 60; i += 10) {
 				int cwCheck = mod360(mostDirectBearing + i);
-				if (noFlyZoneChecker.isMoveLegal(pos, cwCheck) && inRange(moveDestination(pos, cwCheck), waypoint)) {
+				if (noFlyZoneChecker.moveIsLegal(point, cwCheck) && inRange(moveDestination(point, cwCheck), waypoint)) {
 					return Optional.of(cwCheck);
 				}
 				int acwCheck = mod360(mostDirectBearing - i);
-				if (noFlyZoneChecker.isMoveLegal(pos, acwCheck) && inRange(moveDestination(pos, acwCheck), waypoint)) {
+				if (noFlyZoneChecker.moveIsLegal(point, acwCheck) && inRange(moveDestination(point, acwCheck), waypoint)) {
 					return Optional.of(acwCheck);
 				}
 			}
@@ -218,20 +218,20 @@ public class Pilot {
 		
 		// https://martin-thoma.com/how-to-check-if-two-line-segments-intersect/
 		
-		public boolean isMoveLegal(Point origin, int bearing) {
-			var destination = moveDestination(origin, bearing);
+		public boolean moveIsLegal(Point point, int bearing) {
+			var destination = moveDestination(point, bearing);
 			if (!pointStrictlyInsideBoundingBox(destination, droneConfinementArea)) {
 				return false;
 			}
 			
 			for (var zone : boundariesWithNoFlyZones.keySet()) {
-				if (pointStrictlyInsideBoundingBox(origin, zone.bbox()) || 
+				if (pointStrictlyInsideBoundingBox(point, zone.bbox()) || 
 						pointStrictlyInsideBoundingBox(destination, zone.bbox())) {				
-					if (lineIntersectsPolygon(origin, destination, boundariesWithNoFlyZones.get(zone))) {
+					if (lineIntersectsPolygon(point, destination, boundariesWithNoFlyZones.get(zone))) {
 						return false;
 					}
-				} else if (lineIntersectsPolygon(origin, destination, zone)){
-					if (lineIntersectsPolygon(origin, destination, boundariesWithNoFlyZones.get(zone))) {
+				} else if (lineIntersectsPolygon(point, destination, zone)){
+					if (lineIntersectsPolygon(point, destination, boundariesWithNoFlyZones.get(zone))) {
 						return false;
 					}
 				}
@@ -239,13 +239,20 @@ public class Pilot {
 			return true;
 		}
 		
-		public boolean moveLandsInNoFlyZone(Point origin, int bearing) {
+		public boolean moveLandsInNoFlyZone(Point point, int bearing) {
 			for (var noFlyZone : boundariesWithNoFlyZones.values()) {
-				if (TurfJoins.inside(moveDestination(origin, bearing), noFlyZone)) {
+				if (TurfJoins.inside(moveDestination(point, bearing), noFlyZone)) {
 					return true;
 				}
 			}
 			return false;
+		}
+		
+		private static boolean pointStrictlyInsideBoundingBox(Point point, BoundingBox bound) {
+			var lng = point.longitude();
+			var lat = point.latitude();
+			return lng > bound.west() && lng < bound.east() 
+					&& lat > bound.south() && lat < bound.north(); 
 		}
 		
 		// Details on how this works will be in Section 3 of the report
@@ -326,14 +333,12 @@ public class Pilot {
 			}
 		}
 		
-
 		private static Point toVector(Point a, Point b) {
 			return Point.fromLngLat(
 					b.longitude() - a.longitude(),
 					b.latitude() - a.latitude());
 		}
 		
-
 		private static double cross(Point a, Point b) {
 			return a.longitude()*b.latitude() - a.latitude()*b.longitude();
 		}
@@ -406,7 +411,7 @@ public class Pilot {
 		private Optional<Integer> bearingScan(int scanFrom, int scanTo, int step) {
 			for (int bearing = scanFrom; bearing != scanTo; bearing = mod360(bearing + step)) {
 				
-				if (noFlyZoneChecker.isMoveLegal(branchHead, bearing)) {
+				if (noFlyZoneChecker.moveIsLegal(branchHead, bearing)) {
 					return Optional.of(bearing);
 				}
 			}
@@ -427,7 +432,7 @@ public class Pilot {
 
 			// SECOND
 			// Check if there is a move (either direct or scanned that lands us directly inside the target)
-			var legalBearingToWaypoint = legalBearingToWaypoint(branchHead, goal, noFlyZoneChecker);
+			var legalBearingToWaypoint = mostDirectBearingWithoutOvershoot(branchHead, goal, noFlyZoneChecker);
 			
 			if (legalBearingToWaypoint.isPresent()) {
 				var bearing = legalBearingToWaypoint.get();
@@ -491,13 +496,10 @@ public class Pilot {
 		}
 		
 		private int backtrackBearing() {
-			return mod360(lastBearing() - 180);
+			int lastBearing = bearingsTaken.get(bearingsTaken.size() - 1);
+			return mod360(lastBearing - 180);
 		}
-		
-		private int lastBearing() {
-			return bearingsTaken.get(bearingsTaken.size() - 1);
-		}
-		
+				
 		public double getHeuristic() {
 			return stuck ? Double.MAX_VALUE : (bearingsTaken.size()*Drone.MOVE_DISTANCE) + distanceBetween(branchHead, goal.getPoint());
 		}
@@ -511,8 +513,8 @@ public class Pilot {
 		}
 	}
 	
-	public List<Point> getPath() {
-		return path;
+	public List<Point> getPathTaken() {
+		return pathTaken;
 	}
 	
 	public HashMap<Sensor, Boolean> getSensorsVisited() {
