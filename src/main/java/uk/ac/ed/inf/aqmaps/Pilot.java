@@ -120,7 +120,7 @@ public class Pilot {
 		
 		// Otherwise, (if there is nothing in the way) go in a straight line towards the waypoint  
 		var dronePos = drone.getPosition();
-		var maybe = mostDirectBearingWithoutOvershoot(dronePos, waypoint, noFlyZoneChecker);
+		var maybe = correctedMostDirectBearing(dronePos, waypoint, noFlyZoneChecker);
 		if (maybe.isPresent()) {
 			// TODO: Use is present everywhere it's much better
 			
@@ -154,21 +154,21 @@ public class Pilot {
 		
 		CWBranch.evaluate();
 		ACWBranch.evaluate();
-		
+
 		if (CWBranch.isStuck() && ACWBranch.isStuck()) {  // If both get stuck, we failed to compute a path around the obstruction 
 			return new ArrayList<Integer>();  
 		} else if (CWBranch.isStuck()) {                  // If only one gets stuck, return the other one
-			return ACWBranch.getBranchDirections();
+			return ACWBranch.getBearingsTaken();
 		} else if (ACWBranch.isStuck()) {
-			return CWBranch.getBranchDirections();
+			return CWBranch.getBearingsTaken();
 		}
 		
 		// If both branches completed, return the one with the lower heuristic
-		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBranchDirections() : ACWBranch.getBranchDirections();
+		return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBearingsTaken() : ACWBranch.getBearingsTaken();
 	}
 	
 	
-	private static Optional<Integer> mostDirectBearingWithoutOvershoot(Point point, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
+	private static Optional<Integer> correctedMostDirectBearing(Point point, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
 		
 		int mostDirectBearing = mostDirectBearing(point, waypoint);
 		
@@ -432,7 +432,7 @@ public class Pilot {
 
 			// SECOND
 			// Check if there is a move (either direct or scanned that lands us directly inside the target)
-			var legalBearingToWaypoint = mostDirectBearingWithoutOvershoot(branchHead, goal, noFlyZoneChecker);
+			var legalBearingToWaypoint = correctedMostDirectBearing(branchHead, goal, noFlyZoneChecker);
 			
 			if (legalBearingToWaypoint.isPresent()) {
 				var bearing = legalBearingToWaypoint.get();
@@ -504,7 +504,7 @@ public class Pilot {
 			return stuck ? Double.MAX_VALUE : (bearingsTaken.size()*Drone.MOVE_DISTANCE) + distanceBetween(branchHead, goal.getPoint());
 		}
 		
-		public List<Integer> getBranchDirections() {
+		public List<Integer> getBearingsTaken() {
 			return bearingsTaken;
 		}
 		

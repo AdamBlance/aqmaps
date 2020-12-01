@@ -20,11 +20,11 @@ public class WebServer {
 	
 	private static WebServer singletonInstance;
 	
-	private final String serverURL;
-	private final String port;
+	private String serverURL;
+	private String port;
 	
 	private final HttpClient client = HttpClient.newHttpClient();
-	private final int MAX_HTTP_REQUEST_ATTEMPTS = 10;
+	private static final int MAX_HTTP_REQUEST_ATTEMPTS = 10;
 	
 	private WebServer(String serverURL, String port) {
 		this.serverURL = serverURL;
@@ -77,8 +77,8 @@ public class WebServer {
 				coords.get("lat").getAsDouble());
 	}
 	
-	private String getResourceAsString(String pageUrl) throws UnexpectedHTTPResponseException {
-		var request = HttpRequest.newBuilder().uri(URI.create(pageUrl)).build();
+	private String getResourceAsString(String pageURL) throws UnexpectedHTTPResponseException {
+		var request = HttpRequest.newBuilder().uri(URI.create(pageURL)).build();
 		HttpResponse<String> response = null;
 		
 		int attempts = 0;
