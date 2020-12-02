@@ -13,7 +13,7 @@ public class PointUtils {
 		return Math.sqrt(Math.pow(pointA.longitude() - pointB.longitude(), 2) + Math.pow(pointA.latitude() - pointB.latitude(), 2));
 	}
 	
-	public static int mostDirectBearing(Point point, Waypoint waypoint) {
+	public static int bearingFromTo(Point point, Waypoint waypoint) {
 		var b = waypoint.getPoint();
 		double latDist = b.latitude() - point.latitude();
 		double longDist = b.longitude() - point.longitude();

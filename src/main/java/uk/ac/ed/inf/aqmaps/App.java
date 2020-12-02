@@ -47,15 +47,17 @@ public class App {
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	
-//    	day = "06";
-//    	month = "09";
-//    	year = "2021";
+//    	day = "12";
+//    	month = "12";
+//    	year = "2020";
     	
     	if (!retrieveRelevantData(day, month, year, port)) {
     		moves = -1;
     		return;
     	}
 
+//    	System.out.println("Data retrieved from web server successfully.");
+    	
 //    	exitIfInvalid(startPoint);
     	
     	startingPoint = getRandPoint(noFlyZones);
@@ -71,6 +73,8 @@ public class App {
     	
     	boolean yay = attemptFlight(pilot, route);
 
+//    	outputResults(pilot, day, month, year);
+    	
     	moves = drone.getTimesMoved();
     	
     	if (moves >= 110 || !yay) {
@@ -180,7 +184,7 @@ public class App {
     	}
     	
     	System.out.println(map.toJson());
-    	
+//    	
 //    	var flightpathFname = String.format("flightpath-%s-%s-%s.txt", day, month, year);
 //    	var readingsFname =  String.format("readings-%s-%s-%s.geojson", day, month, year);
 //    	try {

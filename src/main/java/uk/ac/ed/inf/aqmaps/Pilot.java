@@ -2,7 +2,7 @@ package uk.ac.ed.inf.aqmaps;
 
 import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 import static uk.ac.ed.inf.aqmaps.PointUtils.mod360;
-import static uk.ac.ed.inf.aqmaps.PointUtils.mostDirectBearing;
+import static uk.ac.ed.inf.aqmaps.PointUtils.bearingFromTo;
 import static uk.ac.ed.inf.aqmaps.PointUtils.moveDestination;
 import static uk.ac.ed.inf.aqmaps.PointUtils.inRange;
 
@@ -120,7 +120,7 @@ public class Pilot {
 		
 		// Otherwise, (if there is nothing in the way) go in a straight line towards the waypoint  
 		var dronePos = drone.getPosition();
-		var maybe = correctedMostDirectBearing(dronePos, waypoint, noFlyZoneChecker);
+		var maybe = mostDirectBearing(dronePos, waypoint, noFlyZoneChecker);
 		if (maybe.isPresent()) {
 			// TODO: Use is present everywhere it's much better
 			
@@ -129,7 +129,7 @@ public class Pilot {
 		
 		
 		// Finally, if both fail, attempt to compute a path around the obstruction
-		var pathToTake = computeLegalPath(waypoint);
+		var pathToTake = computePathAroundObstruction(waypoint);
 		if (!pathToTake.isEmpty()) {
 			precomputedBearings.addAll(pathToTake);			 // Fill the precomputedBearings queue with our shiny new path
 			return Optional.of(precomputedBearings.poll());	 // Return the first element of the path as the next bearing
@@ -141,7 +141,7 @@ public class Pilot {
 	
 	
 	
-	private List<Integer> computeLegalPath(Waypoint waypoint) {
+	private List<Integer> computePathAroundObstruction(Waypoint waypoint) {
 		var startPoint = drone.getPosition();
 
 		var penis = Feature.fromGeometry(LineString.fromLngLats(pathTaken));
@@ -168,9 +168,9 @@ public class Pilot {
 	}
 	
 	
-	private static Optional<Integer> correctedMostDirectBearing(Point point, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
+	private static Optional<Integer> mostDirectBearing(Point point, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
 		
-		int mostDirectBearing = mostDirectBearing(point, waypoint);
+		int mostDirectBearing = bearingFromTo(point, waypoint);
 		
 		if (noFlyZoneChecker.moveIsLegal(point, mostDirectBearing)) {
 			return Optional.of(mostDirectBearing);
@@ -384,7 +384,7 @@ public class Pilot {
 		// https://en.wikipedia.org/wiki/Chord_(geometry)#In_circles with chords (fixing the r chr 0 to 0.0003 ...
 		
 		private void expand() {
-			int mostDirectBearing = mostDirectBearing(branchHead, goal);
+			int mostDirectBearing = bearingFromTo(branchHead, goal);
 
 			// We stop scanning if the first legal bearing we find is 180 degrees from the one we just took
 			int limit = bearingsTaken.isEmpty() ? mostDirectBearing : backtrackBearing();
@@ -432,7 +432,7 @@ public class Pilot {
 
 			// SECOND
 			// Check if there is a move (either direct or scanned that lands us directly inside the target)
-			var legalBearingToWaypoint = correctedMostDirectBearing(branchHead, goal, noFlyZoneChecker);
+			var legalBearingToWaypoint = mostDirectBearing(branchHead, goal, noFlyZoneChecker);
 			
 			if (legalBearingToWaypoint.isPresent()) {
 				var bearing = legalBearingToWaypoint.get();
