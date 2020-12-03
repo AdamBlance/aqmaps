@@ -176,20 +176,6 @@ public class Pilot {
 			return Optional.of(mostDirectBearing);
 		}
 		
-		// Otherwise, we need to scan for a good one
-		
-		/* 
-		 * The absolute worst case scenario is where the drone is on the absolute edge of the radius
-		 * and the sensor is on the no-fly-zone edge which is perpendicular to the approach angle of the drone
-		 * 
-		 * In this scenario, the drone could stay in range by turning 45 degrees in either direction
-		 * Our drone can't do this since it moves in 10 degree increments
-		 * Instead, we should scan 50 degrees from either side and just in case I'm forgetting something, lets make it 60 degrees so 120 degree scan in total
-		*/
-		
-		// So before we do this check we should really check that the drone is overshooting and hitting a wall
-		// Otherwise, we'll be checking on corner cuts and stuff
-		
 		if (noFlyZoneChecker.moveLandsInNoFlyZone(point, mostDirectBearing)) {
 			for (int i = 10; i <= 60; i += 10) {
 				int cwCheck = mod360(mostDirectBearing + i);
@@ -333,14 +319,14 @@ public class Pilot {
 			}
 		}
 		
-		private static Point toVector(Point a, Point b) {
+		private static Point toVector(Point start, Point end) {
 			return Point.fromLngLat(
-					b.longitude() - a.longitude(),
-					b.latitude() - a.latitude());
+					end.longitude() - start.longitude(),
+					end.latitude() - start.latitude());
 		}
 		
-		private static double cross(Point a, Point b) {
-			return a.longitude()*b.latitude() - a.latitude()*b.longitude();
+		private static double cross(Point vectorA, Point vectorB) {
+			return vectorA.longitude()*vectorB.latitude() - vectorA.latitude()*vectorB.longitude();
 		}
 		
 		private static boolean vectorsOppositeSidesOfLine(Point vectorA, Point vectorB, Point lineVector) {
@@ -377,11 +363,6 @@ public class Pilot {
 			}
 		}
 		
-		// All right so I think this can be brought into one function (expand and isfinished) maybe idk I'm pretty sure actually, I should think of all the steps to do in the first section
-		// We should check if the move destination is within range of the sensor but it's illegal, then we've identified one of these weird edge cases where the sensor's range intersects with a wall
-		// Then we should identify a minimum number of scans in a range that we have to do
-		
-		// https://en.wikipedia.org/wiki/Chord_(geometry)#In_circles with chords (fixing the r chr 0 to 0.0003 ...
 		
 		private void expand() {
 			int mostDirectBearing = bearingFromTo(branchHead, goal);
@@ -451,48 +432,6 @@ public class Pilot {
 			
 			return false;
 
-			
-			// THIRD
-			// Check if there is a move directly towards the target that DOES NOT land in range of it
-			// We check this because rounding problems mean that sometimes there is a legal move towards the goal that just puts us back a step
-			// ...and we know from that step that there is no legal move towards it 
-			
-			// so will need something that if you're within a certain range, it then checks more stuff
-			
-			
-
-			
-			// Okay so at this point we've not checked anything like the backtrack bearing
-			
-			// We just returned the direct path regardless of if it was the backtrack bearing or not, will need to check that
-			
-			// So we need something that checks for direct landings in sensor range
-			// We need a separate thing that checks for paths towards
-			
-			// Thankfully only relevant inside the branch search
-			// Could return some weird object that has 
-			// whether it was a direct path or actually lands in there
-			
-			// Can figure out the exact minimum set of functions later stop procrastinating
-			
-//			int mostDirectBearing = mostDirectBearing(branchHead, goal);
-//			int backtrackBearing = backtrackBearing();
-//			var backtrackResult = moveDestination(branchHead, backtrackBearing);
-			
-			// There is an edge case where
-			//    the drone starts in range of a sensor
-			//    it moves towards it, overshooting and hitting a wall
-			//    it then does a bearing scan and finds a legal move 180 degrees from where it tried to move at first
-			
-//			var penis = Feature.fromGeometry(LineString.fromLngLats(Arrays.asList(branchHead, moveDestination(branchHead, mostDirectBearing))));
-//			penis.addStringProperty("rgb-string", "#000000");
-//			System.out.println(penis.toJson());
-//			
-//			if (noFlyZoneChecker.isMoveLegal(branchHead, mostDirectBearing) && ((mostDirectBearing != backtrackBearing) || (inRange(backtrackResult, goal)))) {
-//				bearingsTaken.add(mostDirectBearing);
-//				return true;
-//			}
-//			return false;
 		}
 		
 		private int backtrackBearing() {

@@ -30,7 +30,7 @@ public class App {
 	
 	private static final boolean INCLUDE_NO_FLY_ZONES_IN_MAP = true;
 	
-	public static double moves = 0;
+	public static int moves = -1;
 	
 	private static List<Sensor> sensors = null;
 	private static List<Polygon> noFlyZones = null;
@@ -47,12 +47,11 @@ public class App {
     	
     	// Populates fields "waypoints" and "noFlyZones"
     	
-//    	day = "12";
-//    	month = "12";
+//    	day = "04";
+//    	month = "04";
 //    	year = "2020";
     	
     	if (!retrieveRelevantData(day, month, year, port)) {
-    		moves = -1;
     		return;
     	}
 
@@ -198,7 +197,7 @@ public class App {
 //    	System.out.printf("%s and %s created successfully!%n", flightpathFname, readingsFname);
     }
     
-    private static void writeFile(String filename, String contents) throws IOException {
+    public static void writeFile(String filename, String contents) throws IOException {
 		var file = new File(filename);
 		if (file.exists()) {
 			file.delete();

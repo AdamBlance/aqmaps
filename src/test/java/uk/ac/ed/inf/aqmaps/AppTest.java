@@ -1,15 +1,20 @@
 package uk.ac.ed.inf.aqmaps;
 
+import java.io.IOException;
+import java.util.ArrayList;
+
 public class AppTest 
 {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		
 		int count = 0;
 		
 		double cummulative = 0;
 		
-		while (true) {
+		var moves = new ArrayList<String>();
+		
+		while (count < 50) {
 			
 			double avg = 0;
 			int days = 0;
@@ -21,9 +26,10 @@ public class AppTest
 	    				test(String.format("%02d", d), String.format("%02d", m), Integer.toString(y));
 	    				if (App.moves != -1) {
 	    					avg += App.moves;
+	    					moves.add(String.format("%d%n", App.moves));
 	    					days += 1;
 	    				}
-    					App.moves = 0;
+    					App.moves = -1;
 	    			}
 	    		}
 	    	}
@@ -34,6 +40,10 @@ public class AppTest
 	    	System.out.println(cummulative / count);
 	    	
 		}
+		
+		App.writeFile("moveResults.txt", String.join("", moves));
+		System.out.println("done!");
+		
 	}
 	
     public static void test(String day, String month, String year) {
