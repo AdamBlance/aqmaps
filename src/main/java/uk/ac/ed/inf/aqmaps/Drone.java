@@ -21,7 +21,8 @@ public class Drone {
 		position = startPosition;
 	}
 
-	// Moves the drone with the provided bearing if it is not out of moves.
+	// Moves the drone with the provided bearing if it is not out of moves
+	// Returns true if the move was successful, false otherwise
 	public boolean move(int bearing) {
 		if (timesMoved >= MAX_MOVES) {
 			return false;

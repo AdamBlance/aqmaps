@@ -22,21 +22,33 @@ import com.mapbox.turf.TurfJoins;
 
 public class Pilot {
 
+	// The pilot’s assigned drone
 	private final Drone drone;
+	
+	// Lets the Pilot check whether a move is legal or not before sending it to the drone
 	private final NoFlyZoneChecker noFlyZoneChecker;
 	
-	private final List<String> log = new ArrayList<>();
-	private final List<Point> pathTaken = new ArrayList<>();
-	private final HashMap<Sensor, Boolean> sensorsVisited = new HashMap<>();
-	
+	// Stores which bearings the drone needs to take to clear no
 	private final Queue<Integer> precomputedBearings = new LinkedList<>();
 	
+	// Remembers which sensors the drone has visited so far
+	private final HashMap<Sensor, Boolean> sensorsVisited = new HashMap<>();
+	
+	// List of points where the drone has been 
+	private final List<Point> pathTaken = new ArrayList<>();
+	
+	// Holds each log line that we later write to flightpath-*.txt
+	private final List<String> log = new ArrayList<>();
+	
+	// Creates a pilot with an assigned drone, and with specified restrictions
 	public Pilot(Drone drone, List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 		this.drone = drone;
 		this.noFlyZoneChecker = new NoFlyZoneChecker(noFlyZones, droneConfinementArea);
 		pathTaken.add(drone.getPosition());  // Include start position in the flight path
 	}
 	
+	// Tries to fly the drone to each sensor in the route (in order), returning it to its initial position afterwards
+	// Returns true if the flight was successful (made it back in 150 moves, visited every sensor, didn’t get stuck)
 	public boolean followRoute(List<Sensor> route) {
 		for (var sensor : route) {
 			sensorsVisited.put(sensor, false);     // Mark all sensors unvisited initially  
@@ -59,6 +71,8 @@ public class Pilot {
 		sensorsVisited.put(sensor, true);  // Mark as visited
 	}
 
+	// Tries to fly the drone to the specified waypoint
+	// Returns true if the drone makes it to the waypoint without running out of moves or getting stuck
 	private boolean navigateTo(Waypoint waypoint) {
 		
 		// Until we have arrived at the waypoint, try repeatedly to move towards it 
@@ -96,6 +110,7 @@ public class Pilot {
 		return true;  // breaking from the loop means we have arrived
 	}
 
+	// Determines and then returns the most appropriate bearing to take
 	private Optional<Integer> nextBearing(Waypoint waypoint) {
 		// Return the next pre-computed bearing if it exists
 		if (!precomputedBearings.isEmpty()) {
@@ -120,6 +135,8 @@ public class Pilot {
 		return Optional.empty();
 	}
 
+	// Returns the bearing directly towards the waypoint if the resulting move would be legal
+	// If the resulting move overshoots the waypoint and hits a no-fly-zone, tries to correct it
 	private static Optional<Integer> mostDirectBearing(Point point, Waypoint waypoint, NoFlyZoneChecker noFlyZoneChecker) {
 		
 		// The bearing of the line that goes directly towards the waypoint from point
@@ -148,6 +165,8 @@ public class Pilot {
 		return Optional.empty();
 	}
 
+	// Tries to compute a legal path for the drone to take to avoid an obstruction
+	// Returns the path (as a list of bearings) if successful
 	private List<Integer> computePathAroundObstruction(Waypoint waypoint) {
 			var startPoint = drone.getPosition();
 			
@@ -170,7 +189,8 @@ public class Pilot {
 			// If both branches completed, return the path of the one with the lower heuristic
 			return (CWBranch.getHeuristic() < ACWBranch.getHeuristic()) ? CWBranch.getBearingsTaken() : ACWBranch.getBearingsTaken();
 		}
-
+	
+	// Creates a new log entry (String) and adds it to log
 	private void logMove(Point previousPosition, int bearing, Point newPosition, String w3wAddress) {
 		// Update the path that the drone has taken
 		pathTaken.add(newPosition);
@@ -193,21 +213,25 @@ public class Pilot {
 		return sensorsVisited;
 	}
 	
+	// Returns the concatenation of all log strings in the log list 
 	public String getLog() {
-		return String.join("", log);  // Creates one big string from all the log strings
+		return String.join("", log);
 	}
 
 	private static class NoFlyZoneChecker {
 	
 		private BoundingBox droneConfinementArea;
-		
+	
+		// Map with no-fly-zones as the values and their bounding boxes as the keys
 		private HashMap<Polygon, Polygon> boundariesWithNoFlyZones = new HashMap<>();
 		
+		// Creates a NoFlyZoneChecker object that checks the legality of moves against the provided no-fly-zones and confinement area
 		public NoFlyZoneChecker(List<Polygon> noFlyZones, BoundingBox droneConfinementArea) {
 			calculateBoundaries(noFlyZones);  // Populates boundariesWithNoFlyZones
 			this.droneConfinementArea = droneConfinementArea;
 		}
 		
+		// Returns true if the move starting at the specified point, moving in the direction of the specified bearing would be legal
 		public boolean moveIsLegal(Point point, int bearing) {
 			var destination = moveDestination(point, bearing);  // Where the move lands
 			// Move is not legal if it exits the drone confinement area
@@ -234,6 +258,7 @@ public class Pilot {
 			return true;
 		}
 		
+		// Returns true if the move starting at the specified point, moving in the direction of the specified bearing terminates inside a no-fly-zone
 		public boolean moveLandsInNoFlyZone(Point point, int bearing) {
 			// For each no-fly-zone, check the specified move lands inside it
 			for (var noFlyZone : boundariesWithNoFlyZones.values()) {
@@ -254,6 +279,7 @@ public class Pilot {
 		}
 		
 		// Details on how this works will be in Section 3 of the report
+		// Returns true if the line segment defined by the points start and end intersects with any of the line segments that make up poly
 		private static boolean lineIntersectsPolygon(Point start, Point end, Polygon poly) {
 			// Start and end points of the line
 			var S = start;
@@ -283,6 +309,7 @@ public class Pilot {
 			return false;
 		}
 		
+		// Calculates the rectangle that fully encloses each noFlyZone, stores them in boundariesWithNoFlyZones
 		private void calculateBoundaries(List<Polygon> noFlyZones) {
 			for (var noFlyZone : noFlyZones) {
 				
@@ -339,30 +366,39 @@ public class Pilot {
 			}
 		}
 		
+		// The points start and end define a line segment
+		// This line segment is then moved so that start now lies on the origin
+		// The point end can then represent a 2D vector from the origin
 		private static Point toVector(Point start, Point end) {
 			return Point.fromLngLat(
 					end.longitude() - start.longitude(),
 					end.latitude() - start.latitude());
 		}
 		
+		// Returns the (Z component of) the cross product of vectorA and vectorB
 		private static double cross(Point vectorA, Point vectorB) {
 			return vectorA.longitude()*vectorB.latitude() - vectorA.latitude()*vectorB.longitude();
 		}
 		
+		// Returns true if vectorA and vectorB are on opposite sides of the line defined by lineVector
 		private static boolean vectorsOppositeSidesOfLine(Point vectorA, Point vectorB, Point lineVector) {
 			return (cross(lineVector, vectorA) >= 0) ^ (cross(lineVector, vectorB) >= 0);
 		}
 	}
 
 	private static class SearchBranch {
+	
+			// Current head of the search branch
+			private Point branchHead;           
 			
-			private Point branchHead;            
+			// The target waypoint for the branch 
+			// Helps determine when to stop searching
 			private final Waypoint goal;            
 			
 			private boolean stuck = false;      
-	
 			private final boolean clockwise;
 			
+			// List of bearings taken by the search branch
 			List<Integer> bearingsTaken = new ArrayList<>();
 			NoFlyZoneChecker noFlyZoneChecker;
 			
@@ -373,6 +409,7 @@ public class Pilot {
 				this.noFlyZoneChecker = noFlyZoneChecker;
 			}
 			
+			// Repeatedly expands the branch until it finishes or gets stuck
 			public void evaluate() {
 				while (!stuck) {
 					expand();
@@ -382,6 +419,7 @@ public class Pilot {
 				}
 			}
 			
+			// Tries to expand the search branch by one move (updating branchHead and bearingsTaken)
 			private void expand() {
 				int mostDirectBearing = bearingFromTo(branchHead, goal);
 	
@@ -400,6 +438,7 @@ public class Pilot {
 				}	
 			}
 			
+			// Checks the legality of the moves with bearings in the range scanFrom-scanTo (step is the interval)
 			private Optional<Integer> bearingScan(int scanFrom, int scanTo, int step) {
 				// Looks scary, but it's just a for loop with modulo so that our bearings don't go below 0 or above 350
 				// Check the legality of the moves with the bearings between scanFrom and scanTo
@@ -412,6 +451,7 @@ public class Pilot {
 				return Optional.empty();
 			}
 			
+			// Returns true if the branch has found a legal path around the obstruction
 			private boolean isFinished() {
 				// Obvious if we're stuck we're not finished
 				if (stuck) {
@@ -445,11 +485,13 @@ public class Pilot {
 				return false;
 			}
 			
+			// Returns the bearing the branch last took - 180
 			private int backtrackBearing() {
 				int lastBearing = bearingsTaken.get(bearingsTaken.size() - 1);
 				return mod360(lastBearing - 180);
 			}
-					
+			
+			// Returns the length of the branch + the euclidean distance to the goal
 			public double getHeuristic() {
 				return stuck ? Double.MAX_VALUE : (bearingsTaken.size()*Drone.MOVE_DISTANCE) + distanceBetween(branchHead, goal.getPoint());
 			}
@@ -458,8 +500,10 @@ public class Pilot {
 				return bearingsTaken;
 			}
 			
+			// Returns whether the branch was marked as stuck when evaluating it
+			// Always returns false if the branch gets too long
 			public boolean isStuck() {
-				return stuck ? stuck : (bearingsTaken.size() > 150);
+				return stuck ? stuck : (bearingsTaken.size() > Drone.MAX_MOVES);
 			}
 			
 		}

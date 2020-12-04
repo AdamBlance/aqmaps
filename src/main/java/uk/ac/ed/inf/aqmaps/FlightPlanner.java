@@ -11,7 +11,7 @@ import static uk.ac.ed.inf.aqmaps.PointUtils.distanceBetween;
 
 public class FlightPlanner {
 	
-	
+	// Returns a path (ordered list of Sensors) generated using the greedy TSP algorithm
 	public static List<Sensor> greedyPath(Point start, List<Sensor> sensors) {		
 		var dronePath = new ArrayList<Sensor>();  // The generated greedy path
 		var unvisited = new ArrayList<Sensor>(sensors);  // Put all sensors initially in the unvisited list
@@ -26,6 +26,7 @@ public class FlightPlanner {
 		return dronePath;
 	}
 	
+	// Optimises and returns the provided path (ordered list of Sensors) using the 2-opt path optimisation algorithm
 	public static List<Sensor> twoOptPath(Point start, List<Sensor> sensors) {
 		var startWaypoint = new StartEndPoint(start);
 		
@@ -51,15 +52,15 @@ public class FlightPlanner {
 				}
 			}
 		}
-		
 		var sensorPath = path.subList(1, path.size() - 1)  // Remove the start and end of the path (the start/end points)
 				.stream()
-				.map(waypoint -> (Sensor) waypoint)  // Cast from List<Waypoint> to List<Sensor>
+				.map(waypoint -> (Sensor) waypoint)        // Cast from List<Waypoint> to List<Sensor>
 				.collect(Collectors.toList());
 
 		return sensorPath;
 	}
 	
+	// Returns true if reversing the sub-path i-j (inclusive) decreases the overall length of the path
 	private static boolean reversalImprovesPath(List<Waypoint> path, int i, int j) {
 		
 		var beforeStartP = path.get(i - 1).getPoint(); // sensor right before the beginning of the sub-path
@@ -74,6 +75,7 @@ public class FlightPlanner {
 		return lengthAfter < lengthBefore;
 	}
 	
+	// Returns the provided path with the sub-path i-j (inclusive) reversed
 	private static List<Waypoint> modifiedPath(List<Waypoint> path, int i, int j) {
 		var output = new ArrayList<>(path);              // Just copying the path here
 		for (int curr = i; curr <= j; curr++) {
@@ -82,6 +84,7 @@ public class FlightPlanner {
 		return output;
 	}
 	
+	// Returns the sensor closest to point in the provided list of sensors
 	private static Sensor closestSensor(Point point, List<Sensor> sensors) {
 		// Just gets the sensor with the minimum distance from point using streams (just fancied using streams)
 		// I know this isn't super efficient because we're computing the same thing more than once, but euclidean distance takes basically no time

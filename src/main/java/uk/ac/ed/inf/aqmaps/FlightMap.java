@@ -15,6 +15,7 @@ public class FlightMap {
 	private static final String GREY = "#aaaaaa";
 	private static final String BLACK = "#000000";
 	
+	// Returns the flight map as a FeatureCollection given the path of the drone and the map of Sensors and their corresponding reports
 	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, Boolean> sensorsAndVisitedStatus) {
 		
 		// All Features of the map
@@ -31,6 +32,7 @@ public class FlightMap {
 		return FeatureCollection.fromFeatures(allFeatures);
 	}
 	
+	// Returns a list of Features (with appropriate properties) defining each marker on the map
 	private static List<Feature> createMarkerFeatures(HashMap<Sensor, Boolean> sensorsAndVisitedStatus) {
 		
 		// List of all markers
@@ -65,6 +67,7 @@ public class FlightMap {
 		return markerFeatures;
 	}
 	
+	// Returns the marker colour corresponding to reading
 	private static String pollutionToColour(double reading) {
 		// Integer division to get the right colour
 		// Coursework says the max is 256.0 (not 255.0), in that case just set to bright red (7)
