@@ -58,7 +58,6 @@ public class App {
 	   	try {
 			sensors = webServer.getSensors(day, month, year);
 			noFlyZones = webServer.getNoFlyZones();
-			
 		} catch (UnexpectedHTTPResponseException e) {
 			System.out.println(e.getMessage());
 			System.exit(1);
