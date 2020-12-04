@@ -32,6 +32,7 @@ public class WebServer {
 	}
 	
 	public static WebServer getInstanceWithConfig(String serverURL, String port) {
+		// Create the singleton instance if it doesn't already exist
 		if (singletonInstance == null) {
 			singletonInstance = new WebServer(serverURL, port);
 		}
@@ -43,14 +44,14 @@ public class WebServer {
 		
 		var noFlyZones = new ArrayList<Polygon>();
 		for (var feature : FeatureCollection.fromJson(geojsonData).features()) {
-			noFlyZones.add((Polygon) feature.geometry());
+			noFlyZones.add((Polygon) feature.geometry());  // Grab the geometry of the no-fly-zones from their features
 		}	
 		return noFlyZones;
 	}
 	
 	public List<Sensor> getSensors(String day, String month, String year) throws UnexpectedHTTPResponseException {
 		var sensorJson = getResourceAsString(String.format("%s:%s/maps/%s/%s/%s/air-quality-data.json", serverURL, port, year, month, day));
-		var jsonObjList = new Gson().fromJson(sensorJson, JsonObject[].class);
+		var jsonObjList = new Gson().fromJson(sensorJson, JsonObject[].class);  // array of sensors as jsonObjects
 		
 		var sensors = new ArrayList<Sensor>();
 		for (var jsonObj : jsonObjList) {
@@ -59,10 +60,12 @@ public class WebServer {
 			double battery = jsonObj.get("battery").getAsDouble();
 			double reading;
 			try {
+				// Cheating a wee bit by converting the readings to doubles before the drone or pilot see them
 				reading = Double.parseDouble(jsonObj.get("reading").getAsString());
 			} catch (NumberFormatException e) {  // Checking for NaN/Null/null etc.
 				reading = -1.0;
 			}
+			// Creating our Sensor objects from the json pollution sensor data
 			sensors.add(new Sensor(point, w3wAddress, battery, reading));
 		}
 		return sensors;
@@ -81,7 +84,7 @@ public class WebServer {
 		var request = HttpRequest.newBuilder().uri(URI.create(pageURL)).build();
 		HttpResponse<String> response = null;
 		
-		int attempts = 0;
+		int attempts = 0;  // counts how many more HTTP request attempts we have made
 		boolean fulfilled = false;
 		while (!fulfilled) {
 			try {
@@ -89,17 +92,18 @@ public class WebServer {
 				response = client.send(request, BodyHandlers.ofString());
 				fulfilled = true;
 			} catch (ConnectException e) {
-				System.out.println(String.format("Fatal error: Unable to connect to %s at port %s. Exiting...", serverURL, port));
+				System.out.printf("Fatal error: Unable to connect to %s at port %s. Exiting...%n", serverURL, port);
 				System.exit(1);
 			} catch (InterruptedException | IOException e) {
-				if (attempts == MAX_HTTP_REQUEST_ATTEMPTS) {
+				if (attempts == MAX_HTTP_REQUEST_ATTEMPTS) {  
 					System.out.println("Fatal error: Exceeded maximum number of request attempts. Exiting...");
 					System.exit(1);
-				} else {
-					System.out.println(String.format("Request failed. Retrying (%s/%s)...", attempts, MAX_HTTP_REQUEST_ATTEMPTS));
+				} else {  // If our request gets interrupted somehow, retry
+					System.out.printf("Request failed. Retrying (%s/%s)...%n", attempts, MAX_HTTP_REQUEST_ATTEMPTS);
 				}
 			}
 		}
+		
 		if (response.statusCode() == 200) {
 			return response.body();
 		} else {

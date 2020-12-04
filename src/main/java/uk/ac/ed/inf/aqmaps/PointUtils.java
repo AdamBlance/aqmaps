@@ -10,7 +10,9 @@ public class PointUtils {
 	}
 	
 	public static double distanceBetween(Point pointA, Point pointB) {
-		return Math.sqrt(Math.pow(pointA.longitude() - pointB.longitude(), 2) + Math.pow(pointA.latitude() - pointB.latitude(), 2));
+		// This looks bad but it's just euclidean distance
+		return Math.sqrt(Math.pow(pointA.longitude() - pointB.longitude(), 2) 
+				+ Math.pow(pointA.latitude() - pointB.latitude(), 2));
 	}
 	
 	public static int bearingFromTo(Point point, Waypoint waypoint) {
@@ -20,7 +22,7 @@ public class PointUtils {
 		
 		// Gets polar theta, converts to degrees
 		int roundedPolarTheta = (int) Math.round(Math.toDegrees(Math.atan2(latDist, longDist)) / 10.0) * 10;		
-		return mod360(roundedPolarTheta);  // This converts the negative values past the 180 degree mark
+		return mod360(roundedPolarTheta);  // This converts the negative values past the 180 degree mark to make a bearing
 	}
 	
 	public static Point moveDestination(Point point, int bearing) {
@@ -28,7 +30,6 @@ public class PointUtils {
 		var newPosition = Point.fromLngLat(
 				point.longitude() + Drone.MOVE_DISTANCE * Math.cos(rad),
 				point.latitude() + Drone.MOVE_DISTANCE * Math.sin(rad));
-				
 		return newPosition;
 	}
 	

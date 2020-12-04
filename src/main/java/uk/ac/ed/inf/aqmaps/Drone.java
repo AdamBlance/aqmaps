@@ -10,16 +10,18 @@ public class Drone {
 	private Point position;
 	private int timesMoved = 0;
 	
-	// These are only public so that they can be easily accessed
+	// These constants are public so that they can be easily accessed
 	public static final int MAX_MOVES = 150;
 	public static final double MOVE_DISTANCE = 0.0003;
 	public static final double SENSOR_READ_DISTANCE = 0.0002;
 	public static final double END_POINT_DISTANCE = 0.0003;
 	
+	// Creates drone with the specified start position
 	public Drone(Point startPosition) {
 		position = startPosition;
 	}
 
+	// Moves the drone with the provided bearing if it is not out of moves.
 	public boolean move(int bearing) {
 		if (timesMoved >= MAX_MOVES) {
 			return false;
@@ -29,6 +31,7 @@ public class Drone {
 		return true;
 	}
 
+	// Returns the pollution reading of the provided sensor if it is in range
 	public double readSensor(Sensor sensor) {
 		if (inRange(position, sensor)) {
 			return sensor.getReading();

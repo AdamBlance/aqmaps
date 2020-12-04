@@ -17,6 +17,7 @@ public class FlightMap {
 	
 	public static FeatureCollection generateFromFlightData(List<Point> flightpath, HashMap<Sensor, Boolean> sensorsAndVisitedStatus) {
 		
+		// All Features of the map
 		var allFeatures = new ArrayList<Feature>();
 
 		// Uses both the sensor (key) and whether or not it was visited (value) to create each marker
@@ -32,11 +33,12 @@ public class FlightMap {
 	
 	private static List<Feature> createMarkerFeatures(HashMap<Sensor, Boolean> sensorsAndVisitedStatus) {
 		
+		// List of all markers
 		var markerFeatures = new ArrayList<Feature>();
 		
 		for (var sensor : sensorsAndVisitedStatus.keySet()) {  // For each sensor
 			
-			boolean visited = sensorsAndVisitedStatus.get(sensor);  // Get whether it was visited 
+			boolean visited = sensorsAndVisitedStatus.get(sensor);  // Get whether it was visited or not
 			
 			var marker = Feature.fromGeometry(sensor.getPoint());
 			
@@ -57,7 +59,7 @@ public class FlightMap {
 				marker.addStringProperty("marker-color", colour);
 				marker.addStringProperty("marker-symbol", reading < 128 ? "lighthouse" : "danger");	
 			}
-			
+			// Add new marker to the list of all markers
 			markerFeatures.add(marker);
 		}
 		return markerFeatures;
